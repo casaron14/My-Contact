@@ -1,0 +1,8 @@
+BEGIN:VCARD
+VERSION:3.0
+FN:[Your Name]
+EMAIL:your-email@example.com
+TEL:+1234567890
+URL;TYPE=Instagram:https://www.instagram.com/yourusername/
+URL;TYPE=Twitter:https://twitter.com/yourusername
+END:VCARD

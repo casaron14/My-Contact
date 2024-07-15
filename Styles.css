@@ -1,0 +1,114 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 600px;
+    margin: 50px auto;
+    padding: 20px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+h1 {
+    margin-bottom: 20px;
+    font-size: 28px;
+    color: #333333;
+}
+
+p {
+    font-size: 16px;
+    color: #666666;
+    margin-bottom: 30px;
+}
+
+.contact-links {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.contact-link {
+    text-decoration: none;
+    padding: 15px 20px;
+    border-radius: 5px;
+    font-size: 18px;
+    color: #ffffff;
+    transition: background-color 0.3s ease;
+}
+
+.contact-link.email {
+    background-color: #555555;
+}
+
+.contact-link.whatsapp {
+    background-color: #25D366;
+}
+
+.contact-link.instagram {
+    background-color: #C13584;
+}
+
+.contact-link.twitter {
+    background-color: #1DA1F2;
+}
+
+.contact-link.vcard {
+    background-color: #007BFF;
+}
+
+.contact-link:hover {
+    opacity: 0.8;
+}
+
+.message-form {
+    margin-top: 30px;
+    text-align: left;
+}
+
+.message-form h2 {
+    font-size: 24px;
+    color: #333333;
+}
+
+.message-form label {
+    display: block;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #666666;
+}
+
+.message-form input, .message-form textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #cccccc;
+    border-radius: 5px;
+}
+
+.message-form button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007BFF;
+    color: #ffffff;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.message-form button:hover {
+    background-color: #0056b3;
+}
+
+#form-message {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #333333;
+}

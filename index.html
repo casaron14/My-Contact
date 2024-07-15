@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Me</title>
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="scripts.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Contact Me</h1>
+        <p id="intro">Hello! I'm [Your Name], and I'm excited to connect with you. Please feel free to reach out to me through any of the platforms below or save my contact information using the vCard option.</p>
+        <p id="datetime"></p>
+        <div class="contact-links">
+            <a href="mailto:your-email@example.com" class="contact-link email">Email</a>
+            <a href="https://wa.me/1234567890" class="contact-link whatsapp">WhatsApp</a>
+            <a href="https://www.instagram.com/yourusername/" class="contact-link instagram">Instagram</a>
+            <a href="https://twitter.com/yourusername" class="contact-link twitter">Twitter</a>
+            <a href="vcard.vcf" class="contact-link vcard">Download vCard</a>
+        </div>
+        <div class="message-form">
+            <h2>Send me a message</h2>
+            <form id="contact-form">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+                <label for="message">Message:</label>
+                <textarea id="message" name="message" rows="4" required></textarea>
+                <button type="submit">Send</button>
+            </form>
+            <p id="form-message"></p>
+        </div>
+    </div>
+</body>
+</html>
