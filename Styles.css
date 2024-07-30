@@ -10,7 +10,7 @@ body {
     margin: 0 auto;
     padding: 20px;
     background-color: #fff;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .header {
@@ -47,14 +47,14 @@ h1 {
 }
 
 .contact-link {
-    display: block; /* Changed from inline-block to block */
-    width: 100%; /* Ensures the button takes the full width available */
-    margin-bottom: 10px; /* Adds space between the buttons */
+    display: block;
+    width: 100%;
+    margin-bottom: 10px;
     padding: 10px 15px;
     background-color: #007bff;
     color: #fff;
     text-decoration: none;
-    text-align: center; /* Centers the text inside the button */
+    text-align: center;
     border-radius: 5px;
 }
 
@@ -67,3 +67,4 @@ h1 {
 .contact-link.instagram { background-color: #e4405f; }
 .contact-link.twitter { background-color: #1da1f2; }
 .contact-link.vcard { background-color: #4caf50; }
+.contact-link.wallet { background-color: #ff9800; }
