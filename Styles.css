@@ -30,32 +30,40 @@ h1 {
     margin: 0;
     font-size: 24px;
     color: #333;
+    text-align: center;
 }
 
 #intro {
     font-size: 18px;
     color: #666;
+    text-align: center;
 }
 
 #datetime {
     font-size: 16px;
     color: #999;
+    text-align: center;
 }
 
 .contact-links {
     margin-top: 20px;
+    text-align: center;
+}
+
+.contact-links p {
+    margin: 0 0 10px; /* Adds space between the paragraphs */
 }
 
 .contact-link {
-    display: block;
-    width: 100%;
-    margin-bottom: 10px;
+    display: inline-block; /* Change to inline-block for centering */
     padding: 10px 15px;
     background-color: #007bff;
     color: #fff;
     text-decoration: none;
     text-align: center;
     border-radius: 5px;
+    width: 80%; /* Adjust width for better fit on phone screens */
+    max-width: 300px; /* Max width to ensure buttons are not too large */
 }
 
 .contact-link:hover {
@@ -68,3 +76,28 @@ h1 {
 .contact-link.twitter { background-color: #1da1f2; }
 .contact-link.vcard { background-color: #4caf50; }
 .contact-link.wallet { background-color: #ff9800; }
+
+/* Add media queries for additional responsiveness */
+@media (max-width: 600px) {
+    .contact-link {
+        width: 90%; /* Adjust width for smaller screens */
+        padding: 8px 12px; /* Adjust padding for smaller screens */
+    }
+
+    .profile-picture {
+        width: 80px;
+        height: 80px;
+    }
+
+    h1 {
+        font-size: 20px;
+    }
+
+    #intro {
+        font-size: 16px;
+    }
+
+    #datetime {
+        font-size: 14px;
+    }
+}
