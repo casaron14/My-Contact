@@ -6,146 +6,203 @@
     <title>Inkryptus Knowledge Form</title>
     <style>
         * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f7f7f7;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
+body {
+    /* Use a viewport unit to scale font size based on screen width */
+    font-size: 1.1rem; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f7f7f7;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Use a smaller, relative padding for better mobile fit */
+    padding: 5vw; 
+}
 
-        .form-container {
-            background: white;
-            border-radius: 30px;
-            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.3);
-            padding: 60px;
-            max-width: 900px;
-            width: 100%;
-            animation: slideIn 0.5s ease-out;
-        }
+.form-container {
+    background: white;
+    border-radius: 20px; /* Slightly smaller border-radius for mobile */
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.2); /* Lighter shadow for mobile */
+    padding: 30px; /* Reduced padding for mobile */
+    max-width: 900px;
+    width: 100%;
+    animation: slideIn 0.5s ease-out;
+}
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
-        .form-header {
-            text-align: center;
-            margin-bottom: 45px;
-        }
+.form-header {
+    text-align: center;
+    margin-bottom: 30px; /* Reduced margin */
+}
 
-        .form-header h1 {
-            color: #333;
-            font-size: 42px;
-            margin-bottom: 15px;
-        }
+.form-header h1 {
+    color: #333;
+    font-size: 2.2rem; /* Mobile-friendly font size */
+    margin-bottom: 10px;
+}
 
-        .form-header p {
-            color: #666;
-            font-size: 21px;
-        }
+.form-header p {
+    color: #666;
+    font-size: 1.1rem; /* Mobile-friendly font size */
+}
 
-        .form-group {
-            margin-bottom: 38px;
-        }
+.form-group {
+    margin-bottom: 25px; /* Reduced margin */
+}
 
-        label {
-            display: block;
-            color: #333;
-            font-weight: 600;
-            margin-bottom: 12px;
-            font-size: 22px;
-        }
+label {
+    display: block;
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 1.2rem; /* Mobile-friendly font size */
+}
 
-        input[type="text"],
-        input[type="tel"],
-        select {
-            width: 100%;
-            padding: 18px 22px;
-            border: 3px solid #e0e0e0;
-            border-radius: 12px;
-            font-size: 21px;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
+input[type="text"],
+input[type="tel"],
+select {
+    width: 100%;
+    padding: 14px 18px; /* Reduced padding */
+    border: 2px solid #e0e0e0; /* Slightly thinner border */
+    border-radius: 8px; /* Slightly smaller border-radius */
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
 
-        input[type="text"]:focus,
-        input[type="tel"]:focus,
-        select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
+input[type="text"]:focus,
+input[type="tel"]:focus,
+select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
 
-        select {
-            cursor: pointer;
-            background-color: white;
-        }
+select {
+    cursor: pointer;
+    background-color: white;
+}
 
-        .submit-btn {
-            width: 100%;
-            padding: 21px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 24px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            margin-top: 15px;
-        }
+.submit-btn {
+    width: 100%;
+    padding: 18px; /* Reduced padding */
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.2rem; /* Mobile-friendly font size */
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-top: 10px;
+}
 
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 15px 30px rgba(102, 126, 234, 0.3);
-        }
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+}
 
-        .submit-btn:active {
-            transform: translateY(0);
-        }
+.submit-btn:active {
+    transform: translateY(0);
+}
 
-        .success-message {
-            display: none;
-            background-color: #3189e7;
-            color: white;
-            padding: 22px;
-            border-radius: 12px;
-            text-align: center;
-            margin-top: 30px;
-            font-size: 21px;
-            animation: fadeIn 0.5s ease;
-        }
+.success-message {
+    display: none;
+    background-color: #3189e7;
+    color: white;
+    padding: 15px; /* Reduced padding */
+    border-radius: 8px;
+    text-align: center;
+    margin-top: 20px;
+    font-size: 1rem;
+    animation: fadeIn 0.5s ease;
+}
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
 
-        .success-message.show {
-            display: block;
-        }
+.success-message.show {
+    display: block;
+}
 
-        .required {
-            color: #e74c3c;
-        }
+.required {
+    color: #e74c3c;
+}
+
+/* 💻 Desktop/Tablet Styles (Apply only when screen is wider than 600px) */
+@media (min-width: 600px) {
+    .form-container {
+        border-radius: 30px;
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.3);
+        padding: 60px;
+    }
+
+    .form-header h1 {
+        font-size: 42px;
+        margin-bottom: 15px;
+    }
+
+    .form-header p {
+        font-size: 21px;
+    }
+
+    .form-group {
+        margin-bottom: 38px;
+    }
+
+    label {
+        margin-bottom: 12px;
+        font-size: 22px;
+    }
+
+    input[type="text"],
+    input[type="tel"],
+    select {
+        padding: 18px 22px;
+        border: 3px solid #e0e0e0;
+        border-radius: 12px;
+        font-size: 21px;
+    }
+
+    .submit-btn {
+        padding: 21px;
+        border-radius: 12px;
+        font-size: 24px;
+        margin-top: 15px;
+    }
+
+    .submit-btn:hover {
+        box-shadow: 0 15px 30px rgba(102, 126, 234, 0.3);
+    }
+    
+    .success-message {
+        padding: 22px;
+        border-radius: 12px;
+        margin-top: 30px;
+        font-size: 21px;
+    }
+}
     </style>
 </head>
 <body>
@@ -249,4 +306,5 @@
     </script>
 </body>
 </html>
+
 
