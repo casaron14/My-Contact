@@ -1,161 +1,160 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inkryptus Knowledge Form</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Knowledge Form</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-        body {
-            font-size: 1.1rem; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f7f7f7;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 5vw; 
-        }
+        body {
+            font-size: 1.1rem; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f7f7f7;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 5vw; 
+        }
 
-        .form-container {
-            background: white;
-            border-radius: 20px; 
-            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.2); 
-            padding: 30px; 
-            max-width: 900px;
-            width: 100%;
-            animation: slideIn 0.5s ease-out;
-        }
+        .form-container {
+            background: white;
+            border-radius: 20px; 
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.2); 
+            padding: 30px; 
+            max-width: 900px;
+            width: 100%;
+            animation: slideIn 0.5s ease-out;
+        }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
-        .form-header {
-            text-align: center;
-            margin-bottom: 30px; 
-        }
+        .form-header {
+            text-align: center;
+            margin-bottom: 30px; 
+        }
 
-        .form-header h1 {
-            color: #333;
-            font-size: 2.2rem; 
-            margin-bottom: 10px;
-        }
+        .form-header h1 {
+            color: #333;
+            font-size: 2.2rem; 
+            margin-bottom: 10px;
+        }
 
-        .form-header p {
-            color: #666;
-            font-size: 1.1rem; 
-        }
+        .form-header p {
+            color: #666;
+            font-size: 1.1rem; 
+        }
 
-        .form-group {
-            margin-bottom: 25px; 
-        }
+        .form-group {
+            margin-bottom: 25px; 
+        }
 
-        label {
-            display: block;
-            color: #333;
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 1.2rem; 
-        }
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 1.2rem; 
+        }
 
-        input[type="text"],
-        input[type="tel"],
-        select {
-            width: 100%;
-            padding: 14px 18px; 
-            border: 2px solid #e0e0e0; 
-            border-radius: 8px; 
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            -webkit-appearance: none;
-            appearance: none;
-            pointer-events: auto;
-            user-select: text;
-        }
+        input[type="text"],
+        input[type="tel"],
+        select {
+            width: 100%;
+            padding: 14px 18px; 
+            border: 2px solid #e0e0e0; 
+            border-radius: 8px; 
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            -webkit-appearance: none;
+            appearance: none;
+            pointer-events: auto;
+            user-select: text;
+        }
 
-        input[type="text"]:focus,
-        input[type="tel"]:focus,
-        select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
+        input[type="text"]:focus,
+        input[type="tel"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
 
-        select {
-            cursor: pointer;
-            background-color: white;
-            -webkit-appearance: menulist;
-            -moz-appearance: menulist;
-            appearance: menulist;
-        }
+        select {
+            cursor: pointer;
+            background-color: white;
+            -webkit-appearance: menulist;
+            -moz-appearance: menulist;
+            appearance: menulist;
+        }
 
-        .submit-btn {
-            width: 100%;
-            padding: 18px; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.2rem; 
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            margin-top: 10px;
-        }
+        .submit-btn {
+            width: 100%;
+            padding: 18px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.2rem; 
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: 10px;
+        }
 
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
-        }
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+        }
 
-        .submit-btn:active {
-            transform: translateY(0);
-        }
+        .submit-btn:active {
+            transform: translateY(0);
+        }
 
-        .success-message {
-            display: none;
-            background-color: #3189e7;
-            color: white;
-            padding: 15px; 
-            border-radius: 8px;
-            text-align: center;
-            margin-top: 20px;
-            font-size: 1rem;
-            animation: fadeIn 0.5s ease;
-        }
+        .success-message {
+            display: none;
+            background-color: #3189e7;
+            color: white;
+            padding: 15px; 
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 1rem;
+            animation: fadeIn 0.5s ease;
+        }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
 
-        .success-message.show {
-            display: block;
-        }
+        .success-message.show {
+            display: block;
+        }
 
-        .required {
-            color: #e74c3c;
-        }
+        .required {
+            color: #e74c3c;
+        }
 
-        /* FIX: Ensure iframe is absolutely off-screen to prevent interaction issues */
         #hidden_iframe {
             position: absolute; 
             top: -9999px; 
@@ -165,164 +164,133 @@
             visibility: hidden; 
         }
 
-        /* 💻 Desktop/Tablet Styles (Apply only when screen is wider than 600px) */
-        @media (min-width: 600px) {
-            .form-container {
-                border-radius: 30px;
-                box-shadow: 0 30px 90px rgba(0, 0, 0, 0.3);
-                padding: 60px;
-            }
+        @media (min-width: 600px) {
+            .form-container {
+                border-radius: 30px;
+                box-shadow: 0 30px 90px rgba(0, 0, 0, 0.3);
+                padding: 60px;
+            }
 
-            .form-header h1 {
-                font-size: 42px;
-                margin-bottom: 15px;
-            }
+            .form-header h1 {
+                font-size: 42px;
+                margin-bottom: 15px;
+            }
 
-            .form-header p {
-                font-size: 21px;
-            }
+            .form-header p {
+                font-size: 21px;
+            }
 
-            .form-group {
-                margin-bottom: 38px;
-            }
+            .form-group {
+                margin-bottom: 38px;
+            }
 
-            label {
-                margin-bottom: 12px;
-                font-size: 22px;
-            }
+            label {
+                margin-bottom: 12px;
+                font-size: 22px;
+            }
 
-            input[type="text"],
-            input[type="tel"],
-            select {
-                padding: 18px 22px;
-                border: 3px solid #e0e0e0;
-                border-radius: 12px;
-                font-size: 21px;
-            }
+            input[type="text"],
+            input[type="tel"],
+            select {
+                padding: 18px 22px;
+                border: 3px solid #e0e0e0;
+                border-radius: 12px;
+                font-size: 21px;
+            }
 
-            .submit-btn {
-                padding: 21px;
-                border-radius: 12px;
-                font-size: 24px;
-                margin-top: 15px;
-            }
+            .submit-btn {
+                padding: 21px;
+                border-radius: 12px;
+                font-size: 24px;
+                margin-top: 15px;
+            }
 
-            .submit-btn:hover {
-                box-shadow: 0 15px 30px rgba(102, 126, 234, 0.3);
-            }
-            
-            .success-message {
-                padding: 22px;
-                border-radius: 12px;
-                margin-top: 30px;
-                font-size: 21px;
-            }
-        }
-    </style>
+            .submit-btn:hover {
+                box-shadow: 0 15px 30px rgba(102, 126, 234, 0.3);
+            }
+            
+            .success-message {
+                padding: 22px;
+                border-radius: 12px;
+                margin-top: 30px;
+                font-size: 21px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="form-container">
-        <div class="form-header">
-            <h1>Inkryptus Form</h1>
-            <p>Please fill out the form below to register</p>
-        </div>
+    <div class="form-container">
+        <div class="form-header">
+            <h1>Blockchain Knowledge Form</h1>
+            <p>Please fill out the form below to register</p>
+        </div>
 
-        <form 
-            id="charityForm" 
-            method="POST" 
-            target="hidden_iframe"
-            action="https://docs.google.com/forms/d/e/1FAIpQLSfwMZAIWQG9G84jPonwOJktc086_VAGqoo7Zq9CjXSwhYqjBg/formResponse">             <div class="form-group">
-                <label for="fullName">Full Name (Majina Kamili)<span class="required">*</span></label>
-                <input 
-                    type="text" 
-                    id="fullName"  
-                    name="entry.2015299396" 
-                    placeholder="Enter full name"
-                    autocomplete="name"
-                    required>
-            </div>
+        <form id="charityForm" method="POST" target="hidden_iframe" action="https://docs.google.com/forms/d/e/1FAIpQLSfwMZAIWQG9G84jPonwOJktc086_VAGqoo7Zq9CjXSwhYqjBg/formResponse">
+            <div class="form-group">
+                <label for="fullName">Full Name (Majina Kamili)<span class="required">*</span></label>
+                <input type="text" id="fullName" name="entry.2015299396" placeholder="Enter full name" autocomplete="name" required>
+            </div>
 
-            <div class="form-group">
-                <label for="phone">Whatsapp Number <span class="required">*</span></label>
-                <input 
-                    type="tel" 
-                    id="phone" 
-                    name="entry.346262782" 
-                    placeholder="Enter phone number"
-                    autocomplete="tel"
-                    inputmode="numeric"
-                    required>
-            </div>
+            <div class="form-group">
+                <label for="phone">Whatsapp Number <span class="required">*</span></label>
+                <input type="tel" id="phone" name="entry.346262782" placeholder="Enter phone number" autocomplete="tel" inputmode="numeric" required>
+            </div>
 
-            <div class="form-group">
-                <label for="knowledge">Crypto Knowledge Level (Kiwango cha Ufahamu wa crypto) <span class="required">*</span></label>
-                <select 
-                    id="knowledge" 
-                    name="entry.877121624" 
-                    autocomplete="off"
-                    required>
-                    <option value="">Select knowledge level</option>
-                    <option value="Good Knowledge (Ninao)">Good Knowledge (Ninao)</option>
-                    <option value="Average Knowledge (Kawaida)">Average Knowledge (Kawaida)</option>
-                    <option value="Limited Knowledge (Sina)">Limited Knowledge (Sina)</option>
-                </select>
-            </div>
+            <div class="form-group">
+                <label for="knowledge">Crypto Knowledge Level (Kiwango cha Ufahamu wa crypto) <span class="required">*</span></label>
+                <select id="knowledge" name="entry.877121624" autocomplete="off" required>
+                    <option value="">Select knowledge level</option>
+                    <option value="Good Knowledge (Ninao)">Good Knowledge (Ninao)</option>
+                    <option value="Average Knowledge (Kawaida)">Average Knowledge (Kawaida)</option>
+                    <option value="Limited Knowledge (Sina)">Limited Knowledge (Sina)</option>
+                </select>
+            </div>
 
-            <div class="form-group">
-                <label for="confirmation">Invested in Crypto (Umewekeza Kwenye Crypto) <span class="required">*</span></label>
-                <select 
-                    id="confirmation" 
-                    name="entry.727959045" 
-                    autocomplete="off"
-                    required>
-                    <option value="">Select confirmation</option>
-                    <option value="Yes (Ndio)">Yes (Ndio)</option>
-                    <option value="No (Hapana)">No (Hapana)</option>
-                </select>
-            </div>            
+            <div class="form-group">
+                <label for="confirmation">Invested in Crypto (Umewekeza Kwenye Crypto) <span class="required">*</span></label>
+                <select id="confirmation" name="entry.727959045" autocomplete="off" required>
+                    <option value="">Select confirmation</option>
+                    <option value="Yes (Ndio)">Yes (Ndio)</option>
+                    <option value="No (Hapana)">No (Hapana)</option>
+                </select>
+            </div>
+            
             <button type="submit" class="submit-btn">Submit Form</button>
-        </form>
+        </form>
 
-        <div class="success-message" id="successMessage">
-            ✓ Form submitted successfully!
-        </div>
-    </div>
+        <div class="success-message" id="successMessage">
+             Form submitted successfully!
+        </div>
+    </div>
 
-        <iframe name="hidden_iframe" id="hidden_iframe" onload="iframeLoaded()"></iframe>
+    <iframe name="hidden_iframe" id="hidden_iframe"></iframe>
 
-    <script>
-        const form = document.getElementById('charityForm');
-        const successMessage = document.getElementById('successMessage');
-        // The Google Form endpoint (used for reference, but now set in HTML)
-        // const formUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfwMZAIWQG9G84jPonwOJktc086_VAGqoo7Zq9CjXSwhYqjBg/formResponse';
-        
-        // NOTE: form.setAttribute('action', formUrl); has been removed as the action is in the HTML.
+    <script>
+        const form = document.getElementById('charityForm');
+        const successMessage = document.getElementById('successMessage');
+        let formSubmitted = false;
 
-        // Function to run when the iframe loads (which happens after submission)
-        function iframeLoaded() {
-            // Only proceed if the form has actually been submitted
-            if (form.wasSubmitted) {
-                // 1. Show the success message
-                successMessage.classList.add('show');
-                
-                // 2. Hide the message and reset the form after 3 seconds
-                setTimeout(function() {
-                    form.reset();
-                    successMessage.classList.remove('show');
-                    form.wasSubmitted = false; // Reset the flag
-                }, 3000);
-            }
-        }
+        form.addEventListener('submit', function(e) {
+            formSubmitted = true;
+            
+            setTimeout(function() {
+                if (formSubmitted) {
+                    successMessage.classList.add('show');
+                    
+                    setTimeout(function() {
+                        form.reset();
+                        successMessage.classList.remove('show');
+                        formSubmitted = false;
+                    }, 3000);
+                }
+            }, 500);
+        });
 
-        // Intercept the submit event to set a flag
-        form.addEventListener('submit', function(e) {
-            // This flag lets the iframeLoaded function know it was a deliberate submission
-            form.wasSubmitted = true;
-            // Let the form submit naturally to the hidden_iframe
-        });
-
-        // Bind the iframeLoaded function to the iframe's onload event
-        document.getElementById('hidden_iframe').onload = iframeLoaded;
-    </script>
+        document.getElementById('hidden_iframe').onload = function() {
+            if (formSubmitted) {
+                console.log('Form submitted successfully');
+            }
+        };
+    </script>
 </body>
 </html>

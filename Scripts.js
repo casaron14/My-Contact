@@ -14,6 +14,7 @@
     function initializeApp() {
         setCurrentYear();
         initializeTheme();
+        initializeLanguage();
         initializeSmoothScrolling();
         initializeAnimations();
         trackPageViews();
@@ -65,6 +66,55 @@
                 html.setAttribute('data-theme', e.matches ? 'dark' : 'light');
             }
         });
+    }
+
+    /**
+     * Initialize language system
+     */
+    function initializeLanguage() {
+        const langToggle = document.getElementById('lang-toggle');
+        const langText = document.querySelector('.lang-text');
+        const html = document.documentElement;
+        
+        // Check for saved language preference or default to English
+        const savedLang = localStorage.getItem('language') || 'en';
+        
+        // Set initial language
+        setLanguage(savedLang);
+        
+        // Toggle language on button click
+        if (langToggle) {
+            langToggle.addEventListener('click', function() {
+                const currentLang = html.getAttribute('lang') || 'en';
+                const newLang = currentLang === 'en' ? 'sw' : 'en';
+                
+                setLanguage(newLang);
+                localStorage.setItem('language', newLang);
+            });
+        }
+        
+        /**
+         * Set language for all elements with data-en and data-sw attributes
+         */
+        function setLanguage(lang) {
+            // Update HTML lang attribute for accessibility
+            html.setAttribute('lang', lang);
+            
+            // Update button text
+            if (langText) {
+                langText.textContent = lang === 'en' ? 'SW' : 'EN';
+            }
+            
+            // Get all elements with bilingual data attributes
+            const elements = document.querySelectorAll('[data-en][data-sw]');
+            
+            elements.forEach(function(element) {
+                const text = lang === 'en' ? element.getAttribute('data-en') : element.getAttribute('data-sw');
+                if (text) {
+                    element.textContent = text;
+                }
+            });
+        }
     }
 
     /**

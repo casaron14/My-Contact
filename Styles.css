@@ -101,7 +101,6 @@ html {
     transition: var(--transition);
     color: var(--text-primary);
     padding: 0;
-    margin-left: auto;
 }
 
 .theme-toggle:hover {
@@ -128,6 +127,33 @@ html {
 
 [data-theme="dark"] .moon-icon {
     display: none;
+}
+
+/* Language Toggle Button */
+.lang-toggle {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border: 2px solid transparent;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    color: var(--background-white);
+    padding: 0;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.lang-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md);
+}
+
+.lang-text {
+    letter-spacing: 0.5px;
 }
 
 /* ==================== MAIN CONTAINER ==================== */

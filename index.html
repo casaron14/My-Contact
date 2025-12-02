@@ -15,9 +15,12 @@
 <body>
     <header class="site-header">
         <nav class="navigation">
-            <a href="#about" class="nav-link">About</a>
-            <a href="#services" class="nav-link">Services</a>
-            <a href="#contact" class="nav-link">Contact</a>
+            <a href="#about" class="nav-link" data-en="About" data-sw="Kuhusu">About</a>
+            <a href="#services" class="nav-link" data-en="Services" data-sw="Huduma">Services</a>
+            <a href="#contact" class="nav-link" data-en="Contact" data-sw="Wasiliana">Contact</a>
+            <button id="lang-toggle" class="lang-toggle" aria-label="Toggle language">
+                <span class="lang-text">SW</span>
+            </button>
             <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
                 <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
                     <circle cx="12" cy="12" r="5"></circle>
@@ -43,20 +46,20 @@
                 <img src="My Image" alt="Professional portrait of Charity Aron" class="profile-picture">
                 <div class="profile-info">
                     <h1 class="name">Charity Aron</h1>
-                    <h2 class="title">Blockchain Consultant</h2>
+                    <h2 class="title" data-en="Blockchain Enthusiast" data-sw="Mdau wa Blockchain">Blockchain Consultant</h2>
                 </div>
             </div>
         </section>
 
         <section class="about-section">
-            <h2 class="section-heading">Professional Overview</h2>
+            <h2 class="section-heading" data-en="Professional Overview" data-sw="Muhtasari wa Kitaalamu">Professional Overview</h2>
             <div class="about-content">
-                <p class="introduction">
+                <p class="introduction" data-en="With over five years (5) of specialized experience in blockchain technology, I provide comprehensive consultation services to individuals and companies seeking to navigate and use this digital infrastructure with confidence and clarity." data-sw="Nikiwa na zaidi ya miaka mitano (5) ya uzoefu katika teknolojia ya blockchain, ninatoa huduma kamili za Elimu kwa watu binafsi na makampuni wanaotafuta kutumia na kuelewa ulimwengu huu wa kidijitali kwa kujiamini na uhakika.">
                     With over <strong>five years (5)</strong> of specialized experience in blockchain technology, 
                     I provide comprehensive consultation services to individuals and companies seeking to navigate 
                     and use the digital asset landscape with confidence and clarity.
                 </p>
-                <p class="mission-statement">
+                <p class="mission-statement" data-en="My commitment is to simplify complexities of cryptocurrency investment, offering strategic guidance and Web3 solutions that empower clients to make informed decisions in this dynamic digital environment." data-sw="Dhamira yangu ni kurahisisha uwekezaji wa cryptocurrency, kutoa mwongozo wa kimkakati na huduma za Web3 zinazowapa wateja uwezo wa kufanya maamuzi sahihi katika elimwengu wa kidijitali.">
                     My commitment is to simplify complexities of cryptocurrency investment, 
                     offering strategic guidance and Web3 solutions that empower clients to make informed decisions 
                     in this dynamic digital environment.
@@ -65,28 +68,28 @@
         </section>
 
         <section class="services-section" id="services">
-            <h2 class="section-heading">Core Services</h2>
+            <h2 class="section-heading" data-en="Core Services" data-sw="Huduma Kuu">Core Services</h2>
             <div class="services-grid">
                 <a href="charity-form.html" class="service-card">
-                    <h3>Investment Strategy</h3>
-                    <p>Tailored cryptocurrency investment planning aligned with your financial objectives</p>
+                    <h3 data-en="Investment Strategy" data-sw="Mkakati wa Uwekezaji">Investment Strategy</h3>
+                    <p data-en="Tailored cryptocurrency investment planning aligned with your financial objectives" data-sw="Mikakati mahususi ya uwekezaji wa cryptocurrency iliyoandaliwa kulingana na malengo yako ya uchumi">Tailored cryptocurrency investment planning aligned with your financial objectives</p>
                 </a>
                 <a href="charity-form.html" class="service-card">
-                    <h3>Web3 Solutions</h3>
-                    <p>Development and integration of Blockchain technology in your systems</p>
+                    <h3 data-en="Web3 Solutions" data-sw="Suluhisho za Web3">Web3 Solutions</h3>
+                    <p data-en="Development and integration of Blockchain technology in your systems" data-sw="Kutengeneza na kuongeza teknolojia ya Blockchain katika mifumo yako">Development and integration of Blockchain technology in your systems</p>
                 </a>
                 <a href="charity-form.html" class="service-card">
-                    <h3>Educational Consultation</h3>
-                    <p>Comprehensive education on blockchain technology and cryptocurrency fundamentals</p>
+                    <h3 data-en="Educational Consultation" data-sw="Ushauri wa Elimu">Educational Consultation</h3>
+                    <p data-en="Comprehensive education on blockchain technology and cryptocurrency fundamentals" data-sw="Elimu kamili kuhusu teknolojia ya blockchain na misingi ya cryptocurrency">Comprehensive education on blockchain technology and cryptocurrency fundamentals</p>
                 </a>
             </div>
         </section>
 
         <section class="contact-section" id="contact">
-            <h2 class="section-heading">Get in Touch</h2>
-            <p class="contact-intro">Let's discuss how I can assist with your cryptocurrency investment goals.</p>
+            <h2 class="section-heading" data-en="Get in Touch" data-sw="Wasiliana Nasi">Get in Touch</h2>
+            <p class="contact-intro" data-en="Let's discuss how I can assist with your cryptocurrency investment goals." data-sw="Tujadili namna ninavyoweza kukusaidia kufikia malengo yako ya uwekezaji wa cryptocurrency.">Let's discuss how I can assist with your cryptocurrency investment goals.</p>
             
-            <a href="charity-form.html" class="cta-button" aria-label="Get Started">Get Started</a>
+            <a href="charity-form.html" class="cta-button" aria-label="Get Started" data-en="Get Started" data-sw="Anza Sasa">Get Started</a>
             
             <div class="social-links">
                 <a href="mailto:charitysaul14@gmail.com" class="social-icon email" aria-label="Email Charity Aron" title="Email">
@@ -114,9 +117,9 @@
     </main>
 
     <footer class="site-footer">
-        <p>&copy; <span id="current-year"></span> Charity Aron. All rights reserved.</p>
-        <p class="disclaimer">Professional consultation services.</p>
-        <h4>Cryptocurrency investments carry risk. Please invest responsibly.</h4>
+        <p>&copy; <span id="current-year"></span> Charity Aron. <span data-en="All rights reserved." data-sw="Haki zote zimehifadhiwa.">All rights reserved.</span></p>
+        <p class="disclaimer" data-en="Professional consultation services." data-sw="Huduma za ushauri wa kitaalamu.">Professional consultation services.</p>
+        <h4 data-en="Cryptocurrency investments carry risk. Please invest responsibly." data-sw="Uwekezaji wa cryptocurrency una hatari. Tafadhali wekeza kwa busara.">Cryptocurrency investments carry risk. Please invest responsibly.</h4>
     </footer>
 </body>
 
