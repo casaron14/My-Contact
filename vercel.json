@@ -2,15 +2,15 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/submit.js",
+      "src": "api/**/*.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
-    {
-      "src": "/api/submit",
-      "dest": "/api/submit.js"
-    },
     {
       "src": "/(.*\\.(css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot|webp|vcf))",
       "dest": "/public/$1"
@@ -27,5 +27,8 @@
       "src": "/(.*)",
       "dest": "/public/$1"
     }
-  ]
+  ],
+  "env": {
+    "NODE_VERSION": "18"
+  }
 }
