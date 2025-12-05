@@ -7,6 +7,9 @@ package-lock.json
 .env.local
 .env.production
 
+# Configuration files with sensitive data
+public/config.js
+
 # Vercel
 .vercel
 

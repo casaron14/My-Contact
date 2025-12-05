@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blockchain Knowledge Form | Charity Aron</title>
     <meta name="description" content="Register for blockchain and cryptocurrency consultation services with Charity Aron">
+    <script src="config.js"></script>
     <style>
         * {
             margin: 0;
@@ -226,20 +227,20 @@
             <p>Please fill out the form below to register</p>
         </div>
 
-        <form id="charityForm" method="POST" target="hidden_iframe" action="https://docs.google.com/forms/d/e/1FAIpQLSfwMZAIWQG9G84jPonwOJktc086_VAGqoo7Zq9CjXSwhYqjBg/formResponse">
+        <form id="charityForm" method="POST" target="hidden_iframe" action="">
             <div class="form-group">
                 <label for="fullName">Full Name (Majina Kamili)<span class="required">*</span></label>
-                <input type="text" id="fullName" name="entry.2015299396" placeholder="Enter full name" autocomplete="name" required>
+                <input type="text" id="fullName" name="" placeholder="Enter full name" autocomplete="name" required>
             </div>
 
             <div class="form-group">
                 <label for="phone">Whatsapp Number <span class="required">*</span></label>
-                <input type="tel" id="phone" name="entry.346262782" placeholder="Enter phone number" autocomplete="tel" inputmode="numeric" required>
+                <input type="tel" id="phone" name="" placeholder="Enter phone number" autocomplete="tel" inputmode="numeric" required>
             </div>
 
             <div class="form-group">
                 <label for="knowledge">Crypto Knowledge Level (Kiwango cha Ufahamu wa crypto) <span class="required">*</span></label>
-                <select id="knowledge" name="entry.877121624" autocomplete="off" required>
+                <select id="knowledge" name="" autocomplete="off" required>
                     <option value="">Select knowledge level</option>
                     <option value="Good Knowledge (Ninao)">Good Knowledge (Ninao)</option>
                     <option value="Average Knowledge (Kawaida)">Average Knowledge (Kawaida)</option>
@@ -249,7 +250,7 @@
 
             <div class="form-group">
                 <label for="confirmation">Invested in Crypto (Umewekeza Kwenye Crypto) <span class="required">*</span></label>
-                <select id="confirmation" name="entry.727959045" autocomplete="off" required>
+                <select id="confirmation" name="" autocomplete="off" required>
                     <option value="">Select confirmation</option>
                     <option value="Yes (Ndio)">Yes (Ndio)</option>
                     <option value="No (Hapana)">No (Hapana)</option>
@@ -267,6 +268,26 @@
     <iframe name="hidden_iframe" id="hidden_iframe"></iframe>
 
     <script>
+        // Load form configuration from config.js
+        (function() {
+            if (typeof CONFIG === 'undefined') {
+                console.error('CONFIG not loaded. Form will not work.');
+                return;
+            }
+
+            const form = document.getElementById('charityForm');
+            const formConfig = CONFIG.forms.charityForm;
+
+            // Set form action
+            form.action = formConfig.action;
+
+            // Set field names
+            document.getElementById('fullName').name = formConfig.fields.fullName;
+            document.getElementById('phone').name = formConfig.fields.phone;
+            document.getElementById('knowledge').name = formConfig.fields.knowledge;
+            document.getElementById('confirmation').name = formConfig.fields.confirmation;
+        })();
+
         const form = document.getElementById('charityForm');
         const successMessage = document.getElementById('successMessage');
         let formSubmitted = false;

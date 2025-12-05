@@ -13,11 +13,46 @@
 
     function initializeApp() {
         setCurrentYear();
+        loadSocialLinks();
         initializeTheme();
         initializeLanguage();
         initializeSmoothScrolling();
         initializeAnimations();
         trackPageViews();
+    }
+
+    /**
+     * Load social links from config
+     */
+    function loadSocialLinks() {
+        if (typeof CONFIG === 'undefined') {
+            console.warn('CONFIG not loaded. Using placeholder links.');
+            return;
+        }
+
+        // Update email link
+        const emailLink = document.getElementById('email-link');
+        if (emailLink && CONFIG.contact.email) {
+            emailLink.href = `mailto:${CONFIG.contact.email}`;
+        }
+
+        // Update WhatsApp link
+        const whatsappLink = document.getElementById('whatsapp-link');
+        if (whatsappLink && CONFIG.contact.whatsapp) {
+            whatsappLink.href = CONFIG.contact.whatsapp;
+        }
+
+        // Update Instagram link
+        const instagramLink = document.getElementById('instagram-link');
+        if (instagramLink && CONFIG.contact.instagram) {
+            instagramLink.href = CONFIG.contact.instagram;
+        }
+
+        // Update Twitter link
+        const twitterLink = document.getElementById('twitter-link');
+        if (twitterLink && CONFIG.contact.twitter) {
+            twitterLink.href = CONFIG.contact.twitter;
+        }
     }
 
     /**
