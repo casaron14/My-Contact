@@ -9,7 +9,7 @@ const { google } = require('googleapis');
 const rateLimitStore = new Map();
 
 // Configuration
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://casaron14.github.io/My-Contact/';
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://my-contact-khaki.vercel.app/';
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour in milliseconds
 const MIN_RECAPTCHA_SCORE = 0.5;

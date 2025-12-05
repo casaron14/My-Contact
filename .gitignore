@@ -7,8 +7,10 @@ package-lock.json
 .env.local
 .env.production
 
-# Configuration files with sensitive data
+# Configuration files with sensitive data (local development only)
+# Note: config.production.js is committed and safe for deployment
 public/config.js
+!public/config.production.js
 
 # Vercel
 .vercel
