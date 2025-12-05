@@ -17,7 +17,7 @@ const MIN_RECAPTCHA_SCORE = 0.5;
 /**
  * Main handler for the serverless function
  */
-module.exports = async (req, res) => {
+async function handler(req, res) {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return handleCors(res);
@@ -350,3 +350,7 @@ async function appendToSheet(data) {
     throw new Error('Failed to save to Google Sheets');
   }
 }
+
+// Export for Vercel
+module.exports = handler;
+module.exports.default = handler;
