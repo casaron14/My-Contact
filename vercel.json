@@ -1,34 +1,20 @@
 {
-  "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
+      "source": "/(.*\\.(css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot|webp|vcf))",
+      "destination": "/public/$1"
     },
     {
-      "src": "public/**",
-      "use": "@vercel/static"
+      "source": "/charity-form.html",
+      "destination": "/public/charity-form.html"
+    },
+    {
+      "source": "/",
+      "destination": "/public/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/public/$1"
     }
-  ],
-  "routes": [
-    {
-      "src": "/(.*\\.(css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot|webp|vcf))",
-      "dest": "/public/$1"
-    },
-    {
-      "src": "/charity-form.html",
-      "dest": "/public/charity-form.html"
-    },
-    {
-      "src": "/",
-      "dest": "/public/index.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/$1"
-    }
-  ],
-  "env": {
-    "NODE_VERSION": "18"
-  }
+  ]
 }
