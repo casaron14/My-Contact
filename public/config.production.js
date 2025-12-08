@@ -29,7 +29,7 @@ const CONFIG = {
   site: {
     name: "Charity Aron",
     title: "Blockchain Consultant",
-    url: "https://my-contact-khaki.vercel.app/"
+    url: "https://charityaron.vercel.app/"
   },
 
   // reCAPTCHA Site Key (Public - this is MEANT to be visible in frontend)
