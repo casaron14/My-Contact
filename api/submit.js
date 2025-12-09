@@ -91,26 +91,8 @@ async function handler(req, res) {
       fullName: sanitize(body.fullName),
       phone: sanitize(body.phone),
       knowledge: sanitize(body.knowledge),
-      confirmation: sanitize(body.confirmation),
-      recaptchaToken: body.recaptchaToken
+      confirmation: sanitize(body.confirmation)
     };
-
-    // Verify reCAPTCHA token
-    const recaptchaResult = await verifyRecaptcha(sanitizedData.recaptchaToken, clientIp);
-    
-    if (!recaptchaResult.success) {
-      return res.status(403).json({ 
-        ok: false, 
-        error: 'reCAPTCHA verification failed' 
-      });
-    }
-
-    if (recaptchaResult.score < MIN_RECAPTCHA_SCORE) {
-      return res.status(403).json({ 
-        ok: false, 
-        error: 'reCAPTCHA score too low' 
-      });
-    }
 
     // Append to Google Sheets
     await appendToSheet({
@@ -226,11 +208,6 @@ function validateInput(data) {
   // Validate confirmation
   if (!data.confirmation || typeof data.confirmation !== 'string' || data.confirmation.trim().length === 0) {
     return { valid: false, error: 'Crypto investment confirmation is required' };
-  }
-
-  // Validate reCAPTCHA token
-  if (!data.recaptchaToken || typeof data.recaptchaToken !== 'string') {
-    return { valid: false, error: 'reCAPTCHA token is required' };
   }
 
   return { valid: true };
