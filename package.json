@@ -20,7 +20,7 @@
     "googleapis": "^128.0.0"
   },
   "engines": {
-    "node": "18.x"
+    "node": "24.x"
   },
   "devDependencies": {
     "dotenv": "^17.2.3"
