@@ -12,17 +12,9 @@ const CONFIG = {
     twitter: "https://twitter.com/casxiv"
   },
 
-  // Google Forms Configuration (Public - anyone can see this in browser anyway)
-  forms: {
-    charityForm: {
-      action: "https://docs.google.com/forms/d/e/1FAIpQLSfwMZAIWQG9G84jPonwOJktc086_VAGqoo7Zq9CjXSwhYqjBg/formResponse",
-      fields: {
-        fullName: "entry.2015299396",
-        phone: "entry.346262782",
-        knowledge: "entry.877121624",
-        confirmation: "entry.727959045"
-      }
-    }
+  // API Configuration
+  api: {
+    submit: "/api/submit"  // Same-domain API endpoint
   },
 
   // Site Information
