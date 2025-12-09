@@ -195,9 +195,10 @@ function validateInput(data) {
     return { valid: false, error: 'Phone is required' };
   }
 
-  const digitsOnly = data.phone.replace(/[\s\-()]/g, '');
-  if (digitsOnly.length < 7 || digitsOnly.length > 15 || !/^\d+$/.test(digitsOnly)) {
-    return { valid: false, error: 'Phone must contain 7-15 digits' };
+  // Validate phone format with country code (e.g., +254712345678)
+  const phonePattern = /^\+[1-9]\d{1,14}$/;
+  if (!phonePattern.test(data.phone.replace(/[\s\-()]/g, ''))) {
+    return { valid: false, error: 'Phone must include country code (e.g., +254712345678)' };
   }
 
   // Validate knowledge
