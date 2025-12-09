@@ -89,6 +89,10 @@ async function handler(req, res) {
       return res.status(400).json({ 
         ok: false, 
         error: 'Request body is required' 
+      });
+    }
+    console.log(`[${requestId}] Body fields:`, Object.keys(body));
+
     // Validate input fields
     const validation = validateInput(body);
     if (!validation.valid) {
