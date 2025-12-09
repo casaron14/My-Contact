@@ -6,7 +6,21 @@
     <title>Blockchain Knowledge Form | Charity Aron</title>
     <meta name="description" content="Register for blockchain and cryptocurrency consultation services with Charity Aron">
     <script src="./config.production.js"></script>
-    <script src="https://www.google.com/recaptcha/api.js?render=6Lek6SEsAAAAAHcLoL211uAF3CCDLBJ_lh5KCn4M" async defer></script>
+    <!-- reCAPTCHA v3 - Site key loaded dynamically from CONFIG -->
+    <script>
+        // Wait for CONFIG to load, then load reCAPTCHA
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof CONFIG !== 'undefined' && CONFIG.recaptcha && CONFIG.recaptcha.siteKey) {
+                const script = document.createElement('script');
+                script.src = `https://www.google.com/recaptcha/api.js?render=${CONFIG.recaptcha.siteKey}`;
+                script.async = true;
+                script.defer = true;
+                document.head.appendChild(script);
+            } else {
+                console.error('CONFIG.recaptcha.siteKey not found');
+            }
+        });
+    </script>
     <style>
         * {
             margin: 0;

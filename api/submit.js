@@ -9,7 +9,7 @@ const { google } = require('googleapis');
 const rateLimitStore = new Map();
 
 // Configuration
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://charityaron.vercel.app/';
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://charityaron.vercel.app';
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour in milliseconds
 const MIN_RECAPTCHA_SCORE = 0.5;
@@ -37,7 +37,10 @@ async function handler(req, res) {
   try {
     // Check origin
     const origin = req.headers.origin || req.headers.referer;
-    if (!origin || !origin.startsWith(ALLOWED_ORIGIN)) {
+    const normalizedOrigin = origin?.replace(/\/$/, ''); // Remove trailing slash
+    const normalizedAllowed = ALLOWED_ORIGIN.replace(/\/$/, '');
+    
+    if (!origin || !normalizedOrigin.startsWith(normalizedAllowed)) {
       return res.status(403).json({ 
         ok: false, 
         error: 'Forbidden origin' 
@@ -85,10 +88,10 @@ async function handler(req, res) {
 
     // Sanitize inputs
     const sanitizedData = {
-      name: sanitize(body.name),
-      email: sanitize(body.email),
+      fullName: sanitize(body.fullName),
       phone: sanitize(body.phone),
-      notes: sanitize(body.notes || ''),
+      knowledge: sanitize(body.knowledge),
+      confirmation: sanitize(body.confirmation),
       recaptchaToken: body.recaptchaToken
     };
 
@@ -110,10 +113,10 @@ async function handler(req, res) {
 
     // Append to Google Sheets
     await appendToSheet({
-      name: sanitizedData.name,
-      email: sanitizedData.email,
+      fullName: sanitizedData.fullName,
       phone: sanitizedData.phone,
-      notes: sanitizedData.notes
+      knowledge: sanitizedData.knowledge,
+      confirmation: sanitizedData.confirmation
     });
 
     // Return success
@@ -132,7 +135,8 @@ async function handler(req, res) {
  * Handle CORS preflight requests
  */
 function handleCors(res) {
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  const allowedOrigin = ALLOWED_ORIGIN.replace(/\/$/, '');
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Max-Age', '86400');
@@ -143,7 +147,8 @@ function handleCors(res) {
  * Set CORS headers on response
  */
 function setCorsHeaders(res) {
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  const allowedOrigin = ALLOWED_ORIGIN.replace(/\/$/, '');
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
@@ -195,27 +200,13 @@ function validateInput(data) {
     return { valid: false, error: 'Request body is required' };
   }
 
-  // Validate name
-  if (!data.name || typeof data.name !== 'string' || data.name.trim().length === 0) {
-    return { valid: false, error: 'Name is required' };
+  // Validate fullName
+  if (!data.fullName || typeof data.fullName !== 'string' || data.fullName.trim().length === 0) {
+    return { valid: false, error: 'Full Name is required' };
   }
 
-  if (data.name.length > 100) {
-    return { valid: false, error: 'Name must be less than 100 characters' };
-  }
-
-  // Validate email
-  if (!data.email || typeof data.email !== 'string') {
-    return { valid: false, error: 'Email is required' };
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(data.email)) {
-    return { valid: false, error: 'Invalid email format' };
-  }
-
-  if (data.email.length > 100) {
-    return { valid: false, error: 'Email must be less than 100 characters' };
+  if (data.fullName.length > 100) {
+    return { valid: false, error: 'Full Name must be less than 100 characters' };
   }
 
   // Validate phone
@@ -223,20 +214,19 @@ function validateInput(data) {
     return { valid: false, error: 'Phone is required' };
   }
 
-  const phoneRegex = /^\+?[\d\s\-()]{7,15}$/;
   const digitsOnly = data.phone.replace(/[\s\-()]/g, '');
   if (digitsOnly.length < 7 || digitsOnly.length > 15 || !/^\d+$/.test(digitsOnly)) {
     return { valid: false, error: 'Phone must contain 7-15 digits' };
   }
 
-  // Validate notes (optional)
-  if (data.notes !== undefined && data.notes !== null) {
-    if (typeof data.notes !== 'string') {
-      return { valid: false, error: 'Notes must be a string' };
-    }
-    if (data.notes.length > 1000) {
-      return { valid: false, error: 'Notes must be less than 1000 characters' };
-    }
+  // Validate knowledge
+  if (!data.knowledge || typeof data.knowledge !== 'string' || data.knowledge.trim().length === 0) {
+    return { valid: false, error: 'Knowledge level is required' };
+  }
+
+  // Validate confirmation
+  if (!data.confirmation || typeof data.confirmation !== 'string' || data.confirmation.trim().length === 0) {
+    return { valid: false, error: 'Crypto investment confirmation is required' };
   }
 
   // Validate reCAPTCHA token
@@ -330,13 +320,13 @@ async function appendToSheet(data) {
     // Prepare row data
     const timestamp = new Date().toISOString();
     const values = [
-      [timestamp, data.name, data.email, data.phone, data.notes]
+      [timestamp, data.fullName, data.phone, data.knowledge, data.confirmation]
     ];
 
     // Append to sheet
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: 'Sheet1!A:E', // Adjust range as needed
+      range: 'Sheet1!A:E', // Columns: Timestamp, Name, Phone, Knowledge, Confirmation
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       requestBody: {
