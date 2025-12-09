@@ -6,8 +6,40 @@
   },
   "rewrites": [
     {
-      "source": "/(.*\\.(css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot|webp|vcf))",
-      "destination": "/public/$1"
+      "source": "/(.*).css",
+      "destination": "/public/$1.css"
+    },
+    {
+      "source": "/(.*).js",
+      "destination": "/public/$1.js"
+    },
+    {
+      "source": "/(.*).jpg",
+      "destination": "/public/$1.jpg"
+    },
+    {
+      "source": "/(.*).jpeg",
+      "destination": "/public/$1.jpeg"
+    },
+    {
+      "source": "/(.*).png",
+      "destination": "/public/$1.png"
+    },
+    {
+      "source": "/(.*).gif",
+      "destination": "/public/$1.gif"
+    },
+    {
+      "source": "/(.*).svg",
+      "destination": "/public/$1.svg"
+    },
+    {
+      "source": "/(.*).ico",
+      "destination": "/public/$1.ico"
+    },
+    {
+      "source": "/(.*).vcf",
+      "destination": "/public/$1.vcf"
     },
     {
       "source": "/charity-form.html",
@@ -16,10 +48,6 @@
     {
       "source": "/",
       "destination": "/public/index.html"
-    },
-    {
-      "source": "/(?!api)(.*)",
-      "destination": "/public/$1"
     }
   ]
 }
