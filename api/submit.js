@@ -18,13 +18,18 @@ const MIN_RECAPTCHA_SCORE = 0.5;
  * Main handler for the serverless function
  */
 async function handler(req, res) {
+  const requestId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+  console.log(`[${requestId}] Request received:`, req.method, req.url);
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
+    console.log(`[${requestId}] CORS preflight handled`);
     return handleCors(res);
   }
 
   // Only allow POST requests
   if (req.method !== 'POST') {
+    console.error(`[${requestId}] ERROR: Method not allowed -`, req.method);
     return res.status(405).json({ 
       ok: false, 
       error: 'Method not allowed' 
@@ -40,16 +45,22 @@ async function handler(req, res) {
     const normalizedOrigin = origin?.replace(/\/$/, '');
     const normalizedAllowed = ALLOWED_ORIGIN.replace(/\/$/, '');
     
+    console.log(`[${requestId}] Origin check:`, { origin, normalizedOrigin, allowed: normalizedAllowed });
+    
     if (!origin || !normalizedOrigin.startsWith(normalizedAllowed)) {
+      console.error(`[${requestId}] ERROR: Forbidden origin -`, origin);
       return res.status(403).json({ 
         ok: false, 
         error: 'Forbidden origin' 
       });
     }
+    console.log(`[${requestId}] Origin verified`);
+
 
     // Validate content type
     const contentType = req.headers['content-type'];
     if (!contentType || !contentType.includes('application/json')) {
+      console.error(`[${requestId}] ERROR: Invalid content-type -`, contentType);
       return res.status(400).json({ 
         ok: false, 
         error: 'Content-Type must be application/json' 
@@ -58,33 +69,36 @@ async function handler(req, res) {
 
     // Get client IP for rate limiting
     const clientIp = getClientIp(req);
+    console.log(`[${requestId}] Client IP:`, clientIp);
     
     // Check rate limit
     const rateLimitResult = checkRateLimit(clientIp);
     if (!rateLimitResult.allowed) {
+      console.error(`[${requestId}] ERROR: Rate limit exceeded for IP -`, clientIp);
       return res.status(429).json({ 
         ok: false, 
         error: 'Too many requests. Please try again later.' 
       });
     }
+    console.log(`[${requestId}] Rate limit check passed`);
 
     // Parse and validate request body
     const body = req.body;
     if (!body) {
+      console.error(`[${requestId}] ERROR: No request body`);
       return res.status(400).json({ 
         ok: false, 
         error: 'Request body is required' 
-      });
-    }
-
     // Validate input fields
     const validation = validateInput(body);
     if (!validation.valid) {
+      console.error(`[${requestId}] ERROR: Validation failed -`, validation.error);
       return res.status(400).json({ 
         ok: false, 
         error: validation.error 
       });
     }
+    console.log(`[${requestId}] Input validation passed`);
 
     // Sanitize inputs
     const sanitizedData = {
@@ -94,11 +108,16 @@ async function handler(req, res) {
       confirmation: sanitize(body.confirmation),
       recaptchaToken: body.recaptchaToken
     };
-
+    console.log(`[${requestId}] Data sanitized`);phone: sanitize(body.phone),
+      knowledge: sanitize(body.knowledge),
+      confirmation: sanitize(body.confirmation),
     // Verify reCAPTCHA token
+    console.log(`[${requestId}] Verifying reCAPTCHA...`);
     const recaptchaResult = await verifyRecaptcha(sanitizedData.recaptchaToken, clientIp);
+    console.log(`[${requestId}] reCAPTCHA result:`, { success: recaptchaResult.success, score: recaptchaResult.score });
     
     if (!recaptchaResult.success) {
+      console.error(`[${requestId}] ERROR: reCAPTCHA verification failed`);
       return res.status(403).json({ 
         ok: false, 
         error: 'reCAPTCHA verification failed' 
@@ -106,17 +125,25 @@ async function handler(req, res) {
     }
 
     if (recaptchaResult.score < MIN_RECAPTCHA_SCORE) {
+      console.error(`[${requestId}] ERROR: reCAPTCHA score too low -`, recaptchaResult.score);
       return res.status(403).json({ 
         ok: false, 
-        error: 'reCAPTCHA score too low' 
-      });
-    }
-
     // Append to Google Sheets
-    await appendToSheet({
+    console.log(`[${requestId}] Saving to Google Sheets...`);
+    await appendToSheet(requestId, {
       fullName: sanitizedData.fullName,
       phone: sanitizedData.phone,
       knowledge: sanitizedData.knowledge,
+      confirmation: sanitizedData.confirmation
+    });
+
+    console.log(`[${requestId}] SUCCESS: Form submitted successfully`);
+    // Return success
+    return res.status(200).json({ ok: true });
+
+  } catch (error) {
+    console.error(`[${requestId}] FATAL ERROR:`, error.message);
+    console.error(`[${requestId}] Stack:`, error.stack);
       confirmation: sanitizedData.confirmation
     });
 
@@ -282,53 +309,70 @@ async function verifyRecaptcha(token, remoteIp) {
       score: data.score || 0,
       action: data.action,
       challengeTs: data.challenge_ts,
-      hostname: data.hostname
-    };
-  } catch (error) {
-    console.error('reCAPTCHA verification error:', error.message);
+/**
+ * Append data to Google Sheets
+ */
+async function appendToSheet(requestId, data) {ation error:', error.message);
     return { success: false, score: 0 };
   }
 }
 
 /**
- * Append data to Google Sheets
- */
-async function appendToSheet(data) {
   const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.GOOGLE_PRIVATE_KEY;
   const sheetId = process.env.GOOGLE_SHEET_ID;
 
-  if (!serviceAccountEmail || !privateKey || !sheetId) {
-    const missing = [];
-    if (!serviceAccountEmail) missing.push('GOOGLE_SERVICE_ACCOUNT_EMAIL');
-    if (!privateKey) missing.push('GOOGLE_PRIVATE_KEY');
-    if (!sheetId) missing.push('GOOGLE_SHEET_ID');
-    throw new Error(`Google Sheets credentials not configured: ${missing.join(', ')}`);
-  }
+  console.log(`[${requestId}] Env check:`, {
+    hasEmail: !!serviceAccountEmail,
+    hasKey: !!privateKey,
+    keyLength: privateKey?.length,
+    hasSheetId: !!sheetId
+  });
 
+  if (!serviceAccountEmail || !privateKey || !sheetId) {
   try {
     // Handle escaped newlines in private key
     const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
+    console.log(`[${requestId}] Private key formatted`);
 
     // Create JWT client
+    console.log(`[${requestId}] Creating JWT auth...`);
     const auth = new google.auth.JWT({
       email: serviceAccountEmail,
       key: formattedPrivateKey,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
+    console.log(`[${requestId}] JWT auth created`);
 
     // Create Sheets API client
     const sheets = google.sheets({ version: 'v4', auth });
+    console.log(`[${requestId}] Sheets API client created`);
 
     // Prepare row data
     const timestamp = new Date().toISOString();
     const values = [
       [timestamp, data.fullName, data.phone, data.knowledge, data.confirmation]
     ];
+    console.log(`[${requestId}] Row data prepared:`, values);
 
     // Append to sheet
+    console.log(`[${requestId}] Appending to sheet ${sheetId}...`);
     const result = await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
+      range: 'A:E',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: {
+        values: values
+      }
+    });
+    console.log(`[${requestId}] Sheet append successful:`, result.data.updates);
+
+    return { success: true };
+  } catch (error) {
+    console.error(`[${requestId}] ERROR: Google Sheets API failed -`, error.message);
+    console.error(`[${requestId}] Error code:`, error.code);
+    console.error(`[${requestId}] Error status:`, error.status);
       range: 'A:E',
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
