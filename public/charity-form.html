@@ -316,7 +316,21 @@
                     body: JSON.stringify(formData)
                 });
 
-                const result = await response.json();
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                // Get response text first to debug
+                const responseText = await response.text();
+                console.log('Response text:', responseText);
+                
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (e) {
+                    console.error('Failed to parse JSON:', e);
+                    console.error('Raw response:', responseText);
+                    throw new Error('Server returned invalid JSON: ' + responseText.substring(0, 100));
+                }
 
                 if (response.ok && result.ok) {
                     // Show success message
