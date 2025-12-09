@@ -18,13 +18,17 @@ const MIN_RECAPTCHA_SCORE = 0.5;
  * Main handler for the serverless function
  */
 async function handler(req, res) {
+  console.log('🔵 Handler called - Method:', req.method);
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
+    console.log('✅ CORS preflight handled');
     return handleCors(res);
   }
 
   // Only allow POST requests
   if (req.method !== 'POST') {
+    console.log('❌ Method not allowed:', req.method);
     return res.status(405).json({ 
       ok: false, 
       error: 'Method not allowed' 
@@ -37,54 +41,72 @@ async function handler(req, res) {
   try {
     // Check origin
     const origin = req.headers.origin || req.headers.referer;
-    const normalizedOrigin = origin?.replace(/\/$/, ''); // Remove trailing slash
+    const normalizedOrigin = origin?.replace(/\/$/, '');
     const normalizedAllowed = ALLOWED_ORIGIN.replace(/\/$/, '');
     
+    console.log('🔍 Origin check:', { origin, normalizedOrigin, normalizedAllowed });
+    
     if (!origin || !normalizedOrigin.startsWith(normalizedAllowed)) {
+      console.log('❌ Origin forbidden:', origin);
       return res.status(403).json({ 
         ok: false, 
         error: 'Forbidden origin' 
       });
     }
+    
+    console.log('✅ Origin allowed');
 
     // Validate content type
     const contentType = req.headers['content-type'];
     if (!contentType || !contentType.includes('application/json')) {
+      console.log('❌ Invalid content-type:', contentType);
       return res.status(400).json({ 
         ok: false, 
         error: 'Content-Type must be application/json' 
       });
     }
+    
+    console.log('✅ Content-Type valid');
 
     // Get client IP for rate limiting
     const clientIp = getClientIp(req);
+    console.log('🔍 Client IP:', clientIp);
     
     // Check rate limit
     const rateLimitResult = checkRateLimit(clientIp);
     if (!rateLimitResult.allowed) {
+      console.log('❌ Rate limit exceeded for IP:', clientIp);
       return res.status(429).json({ 
         ok: false, 
         error: 'Too many requests. Please try again later.' 
       });
     }
+    
+    console.log('✅ Rate limit OK');
 
     // Parse and validate request body
     const body = req.body;
     if (!body) {
+      console.log('❌ No request body');
       return res.status(400).json({ 
         ok: false, 
         error: 'Request body is required' 
       });
     }
+    
+    console.log('✅ Request body present:', Object.keys(body));
 
     // Validate input fields
     const validation = validateInput(body);
     if (!validation.valid) {
+      console.log('❌ Validation failed:', validation.error);
       return res.status(400).json({ 
         ok: false, 
         error: validation.error 
       });
     }
+    
+    console.log('✅ Validation passed');
 
     // Sanitize inputs
     const sanitizedData = {
@@ -94,10 +116,16 @@ async function handler(req, res) {
       confirmation: sanitize(body.confirmation),
       recaptchaToken: body.recaptchaToken
     };
+    
+    console.log('✅ Data sanitized');
 
     // Verify reCAPTCHA token
+    console.log('🔍 Verifying reCAPTCHA...');
     const recaptchaResult = await verifyRecaptcha(sanitizedData.recaptchaToken, clientIp);
+    console.log('🔍 reCAPTCHA result:', { success: recaptchaResult.success, score: recaptchaResult.score });
+    
     if (!recaptchaResult.success) {
+      console.log('❌ reCAPTCHA verification failed');
       return res.status(403).json({ 
         ok: false, 
         error: 'reCAPTCHA verification failed' 
@@ -105,25 +133,32 @@ async function handler(req, res) {
     }
 
     if (recaptchaResult.score < MIN_RECAPTCHA_SCORE) {
+      console.log('❌ reCAPTCHA score too low:', recaptchaResult.score);
       return res.status(403).json({ 
         ok: false, 
         error: 'reCAPTCHA score too low' 
       });
     }
+    
+    console.log('✅ reCAPTCHA passed');
 
     // Append to Google Sheets
+    console.log('🔍 Appending to Google Sheets...');
     await appendToSheet({
       fullName: sanitizedData.fullName,
       phone: sanitizedData.phone,
       knowledge: sanitizedData.knowledge,
       confirmation: sanitizedData.confirmation
     });
+    
+    console.log('✅ Successfully saved to Google Sheets');
 
     // Return success
     return res.status(200).json({ ok: true });
 
   } catch (error) {
-    console.error('Server error:', error.message);
+    console.error('❌ Server error:', error.message);
+    console.error('❌ Stack trace:', error.stack);
     return res.status(500).json({ 
       ok: false, 
       error: 'Internal server error' 
@@ -299,32 +334,53 @@ async function appendToSheet(data) {
   const privateKey = process.env.GOOGLE_PRIVATE_KEY;
   const sheetId = process.env.GOOGLE_SHEET_ID;
 
+  console.log('🔍 Environment variables check:', {
+    hasEmail: !!serviceAccountEmail,
+    hasPrivateKey: !!privateKey,
+    privateKeyLength: privateKey?.length,
+    hasSheetId: !!sheetId,
+    sheetId: sheetId
+  });
+
   if (!serviceAccountEmail || !privateKey || !sheetId) {
-    throw new Error('Google Sheets credentials not configured');
+    const missing = [];
+    if (!serviceAccountEmail) missing.push('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+    if (!privateKey) missing.push('GOOGLE_PRIVATE_KEY');
+    if (!sheetId) missing.push('GOOGLE_SHEET_ID');
+    console.log('❌ Missing environment variables:', missing);
+    throw new Error(`Google Sheets credentials not configured: ${missing.join(', ')}`);
   }
 
   try {
     // Handle escaped newlines in private key
     const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
+    console.log('✅ Private key formatted');
 
     // Create JWT client
+    console.log('🔍 Creating JWT auth...');
     const auth = new google.auth.JWT({
       email: serviceAccountEmail,
       key: formattedPrivateKey,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
+    console.log('✅ JWT client created');
+
     // Create Sheets API client
     const sheets = google.sheets({ version: 'v4', auth });
+    console.log('✅ Sheets API client created');
 
     // Prepare row data
     const timestamp = new Date().toISOString();
     const values = [
       [timestamp, data.fullName, data.phone, data.knowledge, data.confirmation]
     ];
+    
+    console.log('🔍 Data to append:', values);
 
     // Append to sheet
-    await sheets.spreadsheets.values.append({
+    console.log('🔍 Attempting to append to sheet...');
+    const result = await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
       range: 'Sheet1!A:E', // Columns: Timestamp, Name, Phone, Knowledge, Confirmation
       valueInputOption: 'RAW',
@@ -333,11 +389,14 @@ async function appendToSheet(data) {
         values: values
       }
     });
+    
+    console.log('✅ Sheet append successful:', result.data);
 
     return { success: true };
   } catch (error) {
-    console.error('Google Sheets error:', error.message);
-    throw new Error('Failed to save to Google Sheets');
+    console.error('❌ Google Sheets error:', error.message);
+    console.error('❌ Error details:', error);
+    throw new Error(`Failed to save to Google Sheets: ${error.message}`);
   }
 }
 
