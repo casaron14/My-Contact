@@ -6,8 +6,8 @@
 const CONFIG = {
   // Contact Information (Public - safe to expose)
   contact: {
-    email: "charitysaul14@gmail.com",
-    whatsapp: "https://wa.me/qr/FZZAGZETV5NCP1",
+    email: "casaron14@gmail.com",
+    whatsapp: "https://wa.me/qr/325IGEENHOLPN1",
     instagram: "https://www.instagram.com/casxiv/",
     twitter: "https://twitter.com/casxiv"
   },
