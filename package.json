@@ -1,0 +1,28 @@
+{
+  "name": "contact-form-vercel",
+  "version": "1.0.0",
+  "description": "Secure contact form with Vercel serverless backend, reCAPTCHA v3, and Google Sheets integration",
+  "main": "api/submit.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "contact-form",
+    "vercel",
+    "serverless",
+    "recaptcha",
+    "google-sheets"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "googleapis": "^128.0.0"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "devDependencies": {
+    "dotenv": "^17.2.3"
+  }
+}

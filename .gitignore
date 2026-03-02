@@ -1,0 +1,107 @@
+# ============================================
+# ENVIRONMENT & SECRETS - CRITICAL
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.production.local
+.env.development.local
+*.env
+env.js
+config.production.js
+config.*.js
+!public/config.example.js
+
+# ============================================
+# NODE & DEPENDENCIES
+# ============================================
+node_modules/
+npm-debug.log
+npm-error.log
+yarn-error.log
+yarn-debug.log
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnp
+.pnp.js
+
+# ============================================
+# IDE & EDITOR
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+.env.swp
+
+# ============================================
+# BUILD & DIST
+# ============================================
+dist/
+build/
+out/
+.next/
+.vercel/
+.vercel.json.local
+
+# ============================================
+# OS SPECIFIC
+# ============================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+desktop.ini
+
+# ============================================
+# LOGS
+# ============================================
+logs/
+*.log
+
+# ============================================
+# TESTING
+# ============================================
+coverage/
+.nyc_output/
+test-results/
+
+# ============================================
+# CREDENTIALS & KEYS - SECURITY LAYER
+# ============================================
+*.pem
+*.key
+*.pub
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+*-credentials.json
+*-key.json
+.clasp.json
+clasp.json
+
+# ============================================
+# TEMPORARY FILES
+# ============================================
+tmp/
+temp/
+*.tmp
+*.cache
+*~
+
+# ============================================
+# SECRETS DIRECTORY
+# ============================================
+secrets/
+private/
+.secrets/

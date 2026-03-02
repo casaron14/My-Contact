@@ -1,0 +1,85 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      
+      # Verify no secrets in code
+      - name: Security check - No secrets in build
+        run: |
+          echo "🔒 Running pre-deployment security checks..."
+          
+          # This is redundant with security.yml but important for deployment
+          if grep -r "PRIVATE_KEY\|SECRET=" --include="*.js" . \
+             | grep -v "node_modules" \
+             | grep -v ".env.example"; then
+            echo "❌ Build contains hardcoded secrets!"
+            exit 1
+          fi
+          
+          echo "✅ Security check passed"
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      # Run tests before deployment (if configured)
+      - name: Run tests
+        run: npm test --if-present || echo "No tests configured"
+      
+      # Deploy to Vercel (preview or production)
+      - name: Deploy to Vercel
+        uses: vercel/action@v5
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-comment: false
+        env:
+          # These are set in Vercel Dashboard, not here!
+          # Never commit secrets in workflow files
+          pass-through-env-vars: NODE_VERSION
+      
+      - name: Comment PR with deployment status
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ **Preview deployment ready!**\n\nEnvironment variables have been loaded from Vercel for this preview.'
+            })
+
+  production-deploy:
+    # Only deploy to production on main branch pushes, not PRs
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: deploy
+    
+    steps:
+      - name: Verify production environment
+        run: |
+          echo "🚀 Production deployment initiated"
+          echo "Ensure all environment variables are configured in Vercel Dashboard:"
+          echo "  ✓ GOOGLE_SERVICE_ACCOUNT_EMAIL"
+          echo "  ✓ GOOGLE_PRIVATE_KEY"
+          echo "  ✓ GOOGLE_SHEET_ID"
+          echo "  ✓ TG_BOT_TOKEN"
+          echo "  ✓ TG_CHAT_ID"

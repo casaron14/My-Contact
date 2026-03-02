@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Book your cryptocurrency investment strategy consultation session with Charity Aron.">
+    <meta name="keywords" content="booking, consultation, cryptocurrency, investment strategy, appointment">
+    <meta name="author" content="Charity Aron">
+    <title>Book Your Strategy Session | Charity Aron</title>
+    <link rel="stylesheet" href="booking.css">
+</head>
+<body>
+    <!-- ==================== CARD WRAPPER ==================== -->
+    <div class="wrapper">
+        <div class="card">
+            <!-- ==================== HEADER SECTION ==================== -->
+            <header class="booking-header">
+                <h1 class="header-title">Schedule Your Strategy Session</h1>
+                <p class="header-description">
+                    Select a 30-minute time slot, provide your information, and confirm your booking.
+                </p>
+            </header>
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <main class="booking-main">
+                <div class="booking-container">
+                    
+                    <!-- ==================== STEP 1: SLOTS SECTION (VISIBLE FIRST) ==================== -->
+                    <section class="slots-section" id="slotsSection">
+                        <h2 class="section-title">Step 1: Select Your Time Slot</h2>
+                        <p class="slots-description">Choose a 30-minute consultation from the available times below. Slots available daily from 4:00 PM - 8:00 PM for the next 3 days.</p>
+                        
+                        <div class="slots-container" id="slotsContainer">
+                            <!-- Slots will be generated here by JavaScript -->
+                        </div>
+                    </section>
+
+                    <!-- ==================== STEP 2: FORM SECTION (HIDDEN UNTIL SLOT SELECTED) ==================== -->
+                    <section class="form-section" id="formSection" style="display: none;">
+                        <div class="form-header">
+                            <button class="back-button" id="backButton" aria-label="Go back to slots">← Back to Slots</button>
+                            <h2 class="section-title">Step 2: Your Information</h2>
+                        </div>
+                        
+                        <form id="bookingForm" class="booking-form">
+                            <!-- Selected Slot Display -->
+                            <div class="slot-confirmation">
+                                <div class="confirmation-badge">✓ Slot Selected</div>
+                                <p class="selected-slot-text" id="selectedSlotText"></p>
+                            </div>
+
+                            <!-- Full Name -->
+                            <div class="form-group">
+                                <label for="fullName">Full Name *</label>
+                                <div class="input-wrapper">
+                                    <input 
+                                        type="text" 
+                                        id="fullName" 
+                                        name="fullName" 
+                                        placeholder="Your full name"
+                                        required
+                                    >
+                                </div>
+                                <div class="validation-message" id="fullName-error"></div>
+                            </div>
+
+                            <!-- Email Address -->
+                            <div class="form-group">
+                                <label for="email">Email Address *</label>
+                                <div class="input-wrapper">
+                                    <input 
+                                        type="email" 
+                                        id="email" 
+                                        name="email" 
+                                        placeholder="your.email@example.com"
+                                        required
+                                    >
+                                </div>
+                                <div class="validation-message" id="email-error"></div>
+                            </div>
+
+                            <!-- WhatsApp Number -->
+                            <div class="form-group">
+                                <label for="phone">WhatsApp Number *</label>
+                                <div class="input-wrapper">
+                                    <input 
+                                        type="tel" 
+                                        id="phone" 
+                                        name="phone" 
+                                        placeholder="+27 123 456 789"
+                                        required
+                                    >
+                                </div>
+                                <div class="validation-message" id="phone-error"></div>
+                            </div>
+
+                            <!-- Investment Intent -->
+                            <div class="form-group">
+                                <label for="intent">Your Primary Goal *</label>
+                                <div class="input-wrapper">
+                                    <select 
+                                        id="intent" 
+                                        name="intent"
+                                        required
+                                    >
+                                        <option value="" disabled selected>Select your primary goal...</option>
+                                        <option value="safe_start">I want to start investing safely</option>
+                                        <option value="education">I want structured crypto education before investing</option>
+                                        <option value="strategy">I have invested but need a better strategy</option>
+                                    </select>
+                                </div>
+                                <div class="validation-message" id="intent-error"></div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="button-group">
+                                <button type="submit" id="submitBtn" class="btn btn-primary">
+                                    <span id="btnText">Confirm Booking</span>
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <!-- ==================== STEP 3: CONFIRMATION SECTION (HIDDEN UNTIL SUBMITTED) ==================== -->
+                    <section class="confirmation-section" id="confirmationSection" style="display: none;">
+                        <!-- Confirmation message will be shown here after booking -->
+                    </section>
+
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ==================== FOOTER SECTION ==================== -->
+    <footer class="booking-footer">
+        <div class="footer-content">
+            <p>&copy; <span id="current-year"></span> Charity Aron. Professional consultation services.</p>
+            <p class="footer-disclaimer">Cryptocurrency investments carry risk. Please invest responsibly.</p>
+        </div>
+    </footer>
+
+    <!-- ==================== SCRIPTS ==================== -->
+    <script src="booking.js" defer></script>
+</body>
+</html>
