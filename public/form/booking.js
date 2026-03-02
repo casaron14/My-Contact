@@ -335,6 +335,8 @@
      * STEP 2: User fills form and submits
      */
     async function handleFormSubmit(event) {
+        let originalText; // Declare outside try to ensure availability in finally block
+        
         try {
             event.preventDefault();
 
@@ -355,7 +357,7 @@
             clearValidationErrors();
 
             isSubmitting = true;
-            const originalText = DOM.submitBtn ? DOM.submitBtn.textContent : 'Processing...';
+            originalText = DOM.submitBtn ? DOM.submitBtn.textContent : 'Processing...';
             if (DOM.submitBtn) {
                 DOM.submitBtn.textContent = 'Processing Booking...';
                 DOM.submitBtn.disabled = true;
