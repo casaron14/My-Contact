@@ -345,27 +345,43 @@ async function sendConfirmationEmail(bookingData) {
 // ============================================
 
 async function sendTelegramAlert(alertData) {
-  if (!process.env.TG_BOT_TOKEN || !process.env.TG_CHAT_ID) {
-    console.warn('Telegram not configured, skipping alert');
+  const botToken = process.env.TG_BOT_TOKEN;
+  const chatId = process.env.TG_CHAT_ID;
+
+  if (!botToken || !chatId) {
+    console.warn('⚠️ Telegram not configured (missing token or chat ID), skipping alert');
     return;
   }
 
   try {
+    // Validate chat ID format (should be numeric or start with -)
+    if (!/^-?\d+$/.test(String(chatId).trim())) {
+      console.error(`❌ Telegram chat ID invalid format: "${chatId}" (must be numeric, e.g., 123456789 or -987654321 for groups)`);
+      return;
+    }
+
     const message = buildTelegramMessage(alertData);
-    
-    await fetch(`https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendMessage`, {
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: process.env.TG_CHAT_ID,
+        chat_id: chatId,
         text: message,
         parse_mode: 'Markdown'
       })
     });
 
-    console.log(`Telegram alert sent: ${alertData.type}`);
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      console.error(`❌ Telegram API error (${response.status}):`, responseData.description || responseData.error_code);
+      return;
+    }
+
+    console.log(`✓ Telegram alert sent: ${alertData.type}`);
   } catch (error) {
-    console.error('Telegram alert failed:', error.message);
+    console.error('❌ Telegram alert failed:', error.message);
+    // Non-blocking - don't fail the booking if Telegram fails
   }
 }
 
