@@ -24,19 +24,19 @@
 
 'use strict';
 
-const config = require('../../config');
-const { createDataProvider } = require('../../lib/providers/DataProvider');
-const { createNotificationProvider } = require('../../lib/providers/NotificationProvider');
+const config = require('../config');
+const { createDataProvider } = require('../lib/providers/DataProvider');
+const { createNotificationProvider } = require('../lib/providers/NotificationProvider');
 const {
   validateBookingInput,
   sanitizeInput,
   ApiError,
-} = require('../../lib/security');
+} = require('../lib/security');
 const {
   createSecurityMiddleware,
   handleApiError,
   logger,
-} = require('../../lib/middleware');
+} = require('../lib/middleware');
 
 // Initialize services
 const dataProvider = createDataProvider('google-sheets');

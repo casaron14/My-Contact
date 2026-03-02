@@ -16,14 +16,20 @@ const { google } = require('googleapis');
 // CONFIGURATION & SETTINGS
 // ============================================
 
-const ALLOWED_ORIGINS = [
-    'https://charityaron.vercel.app',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
-];
+// Read allowed origins from .env, with fallback for development
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(o => o)
+  .length > 0
+  ? (process.env.ALLOWED_ORIGINS || '')
+      .split(',')
+      .map(o => o.trim())
+      .filter(o => o)
+  : ['http://localhost:3000', 'http://127.0.0.1:3000']; // Dev fallback
 
-const RATE_LIMIT_MAX = 5;
-const RATE_LIMIT_WINDOW = 60 * 60 * 1000;
+const RATE_LIMIT_MAX = parseInt(process.env.API_RATE_LIMIT_MAX || '5', 10);
+const RATE_LIMIT_WINDOW = parseInt(process.env.API_RATE_LIMIT_WINDOW_MS || '3600000', 10);
 
 // In-memory rate limiter
 const rateLimitStore = new Map();
@@ -108,11 +114,13 @@ async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Server error:', error.message);
+    console.error('❌ Server error:', error.message);
+    console.error('Stack:', error.stack);
     return res.status(500).json({ 
       ok: false, 
       error: 'Internal server error',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
@@ -122,60 +130,92 @@ async function handler(req, res) {
 // ============================================
 
 async function handleUnifiedBooking(body) {
-  // Sanitize inputs to prevent XSS
-  const sanitizedData = {
-    fullName: sanitize(body.fullName),
-    email: sanitize(body.email),
-    phone: sanitize(body.phone),
-    intent: sanitize(body.intent),
-    slotDateTime: body.slotDateTime,
-    timestamp: new Date().toISOString()
-  };
-
-  // Check for duplicate bookings (same email within last 24 hours)
-  const existingBooking = await findExistingBooking(sanitizedData.email);
-  if (existingBooking) {
-    console.log(`Duplicate booking detected for email: ${sanitizedData.email}`);
-    return {
-      message: 'A booking already exists for this email',
-      isDuplicate: true,
-      existingBooking
+  try {
+    // Sanitize inputs to prevent XSS
+    const sanitizedData = {
+      fullName: sanitize(body.fullName),
+      email: sanitize(body.email),
+      phone: sanitize(body.phone),
+      intent: sanitize(body.intent),
+      slotDateTime: body.slotDateTime,
+      timestamp: new Date().toISOString()
     };
+
+    console.log('Starting unified booking for:', sanitizedData.email);
+
+    // Check for duplicate bookings (same email within last 24 hours)
+    let existingBooking;
+    try {
+      existingBooking = await findExistingBooking(sanitizedData.email);
+      if (existingBooking) {
+        console.log(`Duplicate booking detected for email: ${sanitizedData.email}`);
+        return {
+          message: 'A booking already exists for this email',
+          isDuplicate: true,
+          existingBooking
+        };
+      }
+    } catch (error) {
+      console.warn('Could not check for duplicates:', error.message);
+      // Continue anyway
+    }
+
+    // Create complete booking entry in Google Sheets
+    let bookingId;
+    try {
+      console.log('Attempting to save booking to Google Sheets...');
+      bookingId = await appendBookingToSheet({
+        fullName: sanitizedData.fullName,
+        email: sanitizedData.email,
+        phone: sanitizedData.phone,
+        status: 'Booking Confirmed',
+        intent: sanitizedData.intent,
+        slotDateTime: sanitizedData.slotDateTime,
+        submittedAt: sanitizedData.timestamp,
+        source: 'unified_booking'
+      });
+      console.log('✓ Booking saved to Google Sheets. ID:', bookingId);
+    } catch (error) {
+      console.error('❌ Google Sheets error:', error.message);
+      throw new Error(`Failed to save booking: ${error.message}`);
+    }
+
+    // Send Telegram alert for booking (non-blocking - don't fail if this errors)
+    try {
+      console.log('Sending Telegram alert...');
+      await sendTelegramAlert({
+        type: 'BOOKING_CONFIRMED',
+        fullName: sanitizedData.fullName,
+        email: sanitizedData.email,
+        phone: sanitizedData.phone,
+        intent: sanitizedData.intent,
+        slotDateTime: sanitizedData.slotDateTime
+      });
+      console.log('✓ Telegram alert sent');
+    } catch (error) {
+      console.warn('⚠️ Telegram alert failed (non-critical):', error.message);
+    }
+
+    // Send confirmation email (non-blocking - don't fail if this errors)
+    try {
+      await sendConfirmationEmail(sanitizedData);
+      console.log('✓ Confirmation email initiated');
+    } catch (error) {
+      console.warn('⚠️ Email sending failed (non-critical):', error.message);
+    }
+
+    console.log(`✓ Unified booking confirmed. Booking ID: ${bookingId}, Slot: ${sanitizedData.slotDateTime}`);
+
+    return {
+      bookingId,
+      message: 'Booking confirmed successfully!',
+      bookedTime: sanitizedData.slotDateTime,
+      clientEmail: sanitizedData.email
+    };
+  } catch (error) {
+    console.error('handleUnifiedBooking error:', error.message);
+    throw error;
   }
-
-  // Create complete booking entry in Google Sheets
-  const bookingId = await appendBookingToSheet({
-    fullName: sanitizedData.fullName,
-    email: sanitizedData.email,
-    phone: sanitizedData.phone,
-    status: 'Booking Confirmed',
-    intent: sanitizedData.intent,
-    slotDateTime: sanitizedData.slotDateTime,
-    submittedAt: sanitizedData.timestamp,
-    source: 'unified_booking'
-  });
-
-  // Send Telegram alert for booking
-  await sendTelegramAlert({
-    type: 'BOOKING_CONFIRMED',
-    fullName: sanitizedData.fullName,
-    email: sanitizedData.email,
-    phone: sanitizedData.phone,
-    intent: sanitizedData.intent,
-    slotDateTime: sanitizedData.slotDateTime
-  });
-
-  // Send confirmation email
-  await sendConfirmationEmail(sanitizedData);
-
-  console.log(`Unified booking confirmed. Booking ID: ${bookingId}, Slot: ${sanitizedData.slotDateTime}`);
-
-  return {
-    bookingId,
-    message: 'Booking confirmed successfully!',
-    bookedTime: sanitizedData.slotDateTime,
-    clientEmail: sanitizedData.email
-  };
 }
 
 // ============================================
@@ -183,6 +223,19 @@ async function handleUnifiedBooking(body) {
 // ============================================
 
 async function appendBookingToSheet(bookingData) {
+  console.log('appendBookingToSheet called with email:', bookingData.email);
+  
+  // Verify environment variables
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL not configured');
+  }
+  if (!process.env.GOOGLE_PRIVATE_KEY) {
+    throw new Error('GOOGLE_PRIVATE_KEY not configured');
+  }
+  if (!process.env.GOOGLE_SHEET_ID) {
+    throw new Error('GOOGLE_SHEET_ID not configured');
+  }
+
   const auth = getGoogleAuth();
   const sheets = google.sheets({ version: 'v4', auth });
   
@@ -212,7 +265,8 @@ async function appendBookingToSheet(bookingData) {
   ]];
 
   try {
-    await sheets.spreadsheets.values.append({
+    console.log('Appending to sheet:', process.env.GOOGLE_SHEET_NAME || 'Bookings');
+    const response = await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
       range: `${process.env.GOOGLE_SHEET_NAME || 'Bookings'}!A:K`,
       valueInputOption: 'RAW',
@@ -220,10 +274,15 @@ async function appendBookingToSheet(bookingData) {
       requestBody: { values }
     });
 
-    console.log(`Booking saved to Sheets. ID: ${bookingId}`);
+    console.log(`✓ Booking saved to Sheets. ID: ${bookingId}, Updated cells: ${response.data.updates?.updatedCells}`);
     return bookingId;
   } catch (error) {
-    console.error('Google Sheets append error:', error.message);
+    console.error('❌ Google Sheets error details:', {
+      message: error.message,
+      code: error.code,
+      status: error.status,
+      errors: error.errors
+    });
     throw new Error(`Failed to save booking to Google Sheets: ${error.message}`);
   }
 }
@@ -448,13 +507,33 @@ function validateFormInput(data) {
 // ============================================
 
 function getGoogleAuth() {
-  const privateKey = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+  const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const privateKeyRaw = process.env.GOOGLE_PRIVATE_KEY;
   
-  return new google.auth.JWT({
-    email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    key: privateKey,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets']
-  });
+  if (!serviceAccountEmail) {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL is not set');
+  }
+  if (!privateKeyRaw) {
+    throw new Error('GOOGLE_PRIVATE_KEY is not set');
+  }
+
+  const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
+  
+  console.log('Creating JWT auth with email:', serviceAccountEmail);
+  console.log('Private key length:', privateKey.length);
+  
+  try {
+    const auth = new google.auth.JWT({
+      email: serviceAccountEmail,
+      key: privateKey,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets']
+    });
+    console.log('✓ JWT auth created successfully');
+    return auth;
+  } catch (error) {
+    console.error('❌ Failed to create JWT auth:', error.message);
+    throw error;
+  }
 }
 
 function sanitize(input) {

@@ -19,10 +19,10 @@
 'use strict';
 
 const { google } = require('googleapis');
-const config = require('../../config');
-const { validateBookingInput, ApiError } = require('../../lib/security');
-const { createSecurityMiddleware, handleApiError, logger } = require('../../lib/middleware');
-const { createNotificationProvider } = require('../../lib/providers/NotificationProvider');
+const config = require('../config');
+const { validateBookingInput, ApiError } = require('../lib/security');
+const { createSecurityMiddleware, handleApiError, logger } = require('../lib/middleware');
+const { createNotificationProvider } = require('../lib/providers/NotificationProvider');
 
 const securityMiddleware = createSecurityMiddleware();
 const notificationProvider = createNotificationProvider('auto');
