@@ -392,9 +392,14 @@
                 log(`API response: ${response.status} ${response.statusText}`);
 
                 result = await response.json();
+                
+                // Log the full response for debugging
+                log('API response data: ' + JSON.stringify(result));
 
                 if (!response.ok) {
-                    throw new Error(result.error || `Request failed (${response.status})`);
+                    // Use the detailed error message from API if available
+                    const errorMsg = result.message || result.error || `Request failed (${response.status})`;
+                    throw new Error(errorMsg);
                 }
             }
 
