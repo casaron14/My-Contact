@@ -408,7 +408,7 @@
             }
 
             log('Booking successful!');
-            showConfirmation(selectedSlot, formData);
+            showConfirmation(selectedSlot, formData, result);
 
         } catch (error) {
             logError(`Booking submission error: ${error.message}`);
@@ -529,19 +529,30 @@ END:VCALENDAR`;
     /**
      * Show confirmation with calendar options
      */
-    function showConfirmation(slotDateTime, formData) {
+    function showConfirmation(slotDateTime, formData, apiResult) {
         try {
             if (DOM.formSection) DOM.formSection.style.display = 'none';
 
             const { dayLabel, timeStr } = formatSlotDisplay(slotDateTime);
             const devMode = isDevelopment() ? '<p class="dev-note">💡 Development mode - mock booking</p>' : '';
-            const googleCalendarLink = generateGoogleCalendarLink(slotDateTime, formData);
+            
+            // Use server's calendar link if available, otherwise generate client-side
+            const useServerCalendar = apiResult && apiResult.eventLink && apiResult.eventLink !== '#';
+            const googleCalendarLink = useServerCalendar 
+                ? apiResult.eventLink 
+                : generateGoogleCalendarLink(slotDateTime, formData);
+            
+            // Show calendar invite notification if server created event
+            const calendarNotice = useServerCalendar 
+                ? '<p class="calendar-notice">✉️ A calendar invite has been sent to your email!</p>' 
+                : '';
             
             const confirmHTML = `
                 <div class="confirmation-content">
                     <div class="checkmark">✓</div>
                     <h2>Booking Confirmed!</h2>
                     <p class="confirmation-message">Your consultation has been successfully booked.</p>
+                    ${calendarNotice}
                     <div class="booking-details">
                         <div class="detail-item">
                             <span class="detail-label">Date & Time:</span>
@@ -562,7 +573,7 @@ END:VCALENDAR`;
                         <p class="calendar-subtitle">Save this consultation to your calendar</p>
                         <div class="calendar-buttons">
                             <a href="${googleCalendarLink}" target="_blank" class="btn btn-calendar google-calendar">
-                                📆 Add to Google Calendar
+                                📆 ${useServerCalendar ? 'View Event in Google Calendar' : 'Add to Google Calendar'}
                             </a>
                             <button onclick="window.BookingDebug.downloadCalendar()" class="btn btn-calendar system-calendar">
                                 📥 Download to Calendar

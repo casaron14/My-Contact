@@ -1,624 +1,299 @@
 /**
- * Vercel Serverless Function - Unified Booking Submission Handler
- * Simplified flow: User submits complete booking data (form + slot) in ONE API call
+ * Secure Booking Submission API Handler
  * 
- * Handles:
- * - Complete booking submissions with all required data
- * - Google Sheets integration
- * - Telegram alerts
- * - Confirmation emails
- * - Rate limiting & security
+ * Vercel Serverless Function for booking submissions
+ * 
+ * Features:
+ * - Centralized configuration management
+ * - Provider abstraction (DataProvider, NotificationProvider)
+ * - Input validation and sanitization
+ * - Security headers and rate limiting
+ * - Proper error handling (no stack traces in production)
+ * - Safe logging (no secrets)
+ * 
+ * Environment Variables (See .env.example):
+ * - GOOGLE_SERVICE_ACCOUNT_EMAIL
+ * - GOOGLE_PRIVATE_KEY
+ * - GOOGLE_SHEET_ID
+ * - TG_BOT_TOKEN
+ * - TG_CHAT_ID
+ * - ALLOWED_ORIGINS
+ * - API_RATE_LIMIT_MAX
+ * - API_RATE_LIMIT_WINDOW_MS
  */
 
+'use strict';
+
 const { google } = require('googleapis');
+const config = require('../config');
+const { createDataProvider } = require('../lib/providers/DataProvider');
+const { createNotificationProvider } = require('../lib/providers/NotificationProvider');
+const {
+  validateBookingInput,
+  sanitizeInput,
+  ApiError,
+} = require('../lib/security');
+const {
+  createSecurityMiddleware,
+  handleApiError,
+  logger,
+} = require('../lib/middleware');
 
-// ============================================
-// CONFIGURATION & SETTINGS
-// ============================================
+// Initialize services
+const dataProvider = createDataProvider('google-sheets');
+const notificationProvider = createNotificationProvider('auto');
+const securityMiddleware = createSecurityMiddleware();
 
-// Read allowed origins from .env, with fallback for development
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
-  .split(',')
-  .map(o => o.trim())
-  .filter(o => o)
-  .length > 0
-  ? (process.env.ALLOWED_ORIGINS || '')
-      .split(',')
-      .map(o => o.trim())
-      .filter(o => o)
-  : ['http://localhost:3000', 'http://127.0.0.1:3000']; // Dev fallback
-
-const RATE_LIMIT_MAX = parseInt(process.env.API_RATE_LIMIT_MAX || '5', 10);
-const RATE_LIMIT_WINDOW = parseInt(process.env.API_RATE_LIMIT_WINDOW_MS || '3600000', 10);
-
-// In-memory rate limiter
-const rateLimitStore = new Map();
-
-// ============================================
-// MAIN HANDLER
-// ============================================
-
-async function handler(req, res) {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return handleCors(res);
+/**
+ * Create Google Calendar authentication
+ */
+function createCalendarAuth() {
+  if (!config.google.serviceAccountEmail || !config.google.privateKey) {
+    if (config.isProduction()) {
+      logger.warn('⚠️  Google Calendar not configured - calendar events will be skipped');
+    }
+    return null; // Dev mode or missing credentials
   }
 
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ 
-      ok: false, 
-      error: 'Method not allowed' 
-    });
-  }
+  return new google.auth.JWT({
+    email: config.google.serviceAccountEmail,
+    key: config.google.privateKey,
+    scopes: [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/gmail.send',
+    ],
+  });
+}
 
-  // Set CORS headers
-  setCorsHeaders(res);
-
+/**
+ * Create Google Calendar event (non-blocking)
+ */
+async function createCalendarEvent(bookingData) {
   try {
-    // Validate origin
-    const origin = req.headers.origin || req.headers.referer;
-    if (!isOriginAllowed(origin)) {
-      console.warn('Rejected request from origin:', origin);
-      return res.status(403).json({ 
-        ok: false, 
-        error: 'Forbidden origin' 
-      });
-    }
-
-    // Validate content type
-    const contentType = req.headers['content-type'];
-    if (!contentType?.includes('application/json')) {
-      return res.status(400).json({ 
-        ok: false, 
-        error: 'Content-Type must be application/json' 
-      });
-    }
-
-    // Get client IP for rate limiting
-    const clientIp = getClientIp(req);
+    const auth = createCalendarAuth();
     
-    // Check rate limit
-    const rateLimitResult = checkRateLimit(clientIp);
-    if (!rateLimitResult.allowed) {
-      return res.status(429).json({ 
-        ok: false, 
-        error: 'Too many requests. Please try again later.' 
-      });
+    if (!auth) {
+      logger.info('📅 [DEV MODE] Calendar event creation skipped');
+      return {
+        eventId: `dev-${Date.now()}`,
+        eventLink: '#',
+        isDevelopment: true,
+      };
     }
 
-    // Parse and validate request body
-    const body = req.body;
-    if (!body) {
-      return res.status(400).json({ 
-        ok: false, 
-        error: 'Request body is required' 
-      });
-    }
+    const calendar = google.calendar({ version: 'v3', auth });
 
-    // ==================== UNIFIED BOOKING FLOW ====================
-    // All submissions are now complete bookings with slot date time
-    const validation = validateBookingInput(body);
-    if (!validation.valid) {
-      return res.status(400).json({ 
-        ok: false, 
-        error: validation.error 
-      });
-    }
+    const startTime = new Date(bookingData.slotDateTime);
+    const endTime = new Date(startTime.getTime() + 30 * 60 * 1000); // 30 minutes
 
-    const result = await handleUnifiedBooking(body);
+    const eventBody = {
+      summary: `Strategy Session - ${bookingData.fullName}`,
+      description: buildEventDescription(bookingData),
+      start: {
+        dateTime: startTime.toISOString(),
+        timeZone: config.app.timezone,
+      },
+      end: {
+        dateTime: endTime.toISOString(),
+        timeZone: config.app.timezone,
+      },
+      attendees: [
+        {
+          email: bookingData.email,
+          displayName: bookingData.fullName,
+        },
+      ],
+      reminders: {
+        useDefault: true,
+      },
+    };
 
-    return res.status(200).json({ 
-      ok: true,
-      ...result
+    const event = await calendar.events.insert({
+      calendarId: 'primary',
+      resource: eventBody,
+      sendUpdates: 'all', // Send calendar invites to attendees
     });
 
+    logger.info('✅ Calendar event created', { eventId: event.data.id });
+
+    return {
+      eventId: event.data.id,
+      eventLink: event.data.htmlLink,
+      isDevelopment: false,
+    };
   } catch (error) {
-    console.error('❌ Server error:', error.message);
-    console.error('Stack:', error.stack);
-    return res.status(500).json({ 
-      ok: false, 
-      error: 'Internal server error',
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    // Non-blocking: Log error but don't fail the booking
+    logger.error('❌ Calendar event creation failed (non-blocking)', { error: error.message });
+    return {
+      eventId: null,
+      eventLink: null,
+      error: error.message,
+    };
   }
 }
 
-// ============================================
-// UNIFIED BOOKING HANDLER
-// ============================================
+/**
+ * Build event description from booking data
+ */
+function buildEventDescription(bookingData) {
+  return `Cryptocurrency Investment Strategy Session
 
-async function handleUnifiedBooking(body) {
+📋 Client Information:
+- Name: ${bookingData.fullName}
+- Email: ${bookingData.email}
+- Phone: ${bookingData.phone || 'Not provided'}
+- Primary Goal: ${bookingData.intent || 'Not specified'}
+
+📅 Session Details:
+- Duration: 30 minutes
+- Type: Cryptocurrency Investment Strategy Consultation
+- Focus Areas: Investment planning, blockchain technology, Web3 solutions
+
+✅ Pre-Session:
+- Please have your investment goals ready
+- Prepare any questions about cryptocurrency
+- Have relevant financial documents available if applicable`;
+}
+
+/**
+ * Main API handler
+ */
+async function handler(req, res) {
   try {
-    // Sanitize inputs to prevent XSS
-    const sanitizedData = {
-      fullName: sanitize(body.fullName),
-      email: sanitize(body.email),
-      phone: sanitize(body.phone),
-      intent: sanitize(body.intent),
-      slotDateTime: body.slotDateTime,
-      timestamp: new Date().toISOString()
+    // Apply security middleware
+    const securityCheck = await securityMiddleware(req, res);
+    if (securityCheck !== null) {
+      return; // Security middleware handled the response
+    }
+
+    // Only allow POST and OPTIONS
+    if (req.method !== 'POST' && req.method !== 'OPTIONS') {
+      return res.status(405).json({
+        ok: false,
+        error: 'Method not allowed',
+      });
+    }
+
+    // Handle OPTIONS preflight
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+
+    // ==================== BOOKING SUBMISSION ====================
+
+    // Validate request body exists
+    const body = req.body;
+    if (!body || typeof body !== 'object') {
+      throw new ApiError('Request body is required', 400);
+    }
+
+    logger.info('📝 Booking submission received', { email: body.email });
+
+    // Validate input
+    const validation = validateBookingInput(body);
+    if (!validation.valid) {
+      logger.warn('❌ Booking validation failed', { error: validation.error });
+      throw new ApiError(validation.error, 400, validation.allErrors);
+    }
+
+    const sanitizedData = validation.data;
+
+    // ==================== DUPLICATE CHECK ====================
+
+    const existingBooking = await dataProvider.findBookingByEmail(sanitizedData.email);
+    if (existingBooking) {
+      logger.info('⚠️  Duplicate booking detected', {
+        email: sanitizedData.email,
+        existingId: existingBooking.id,
+      });
+
+      return res.status(409).json({
+        ok: true,
+        isDuplicate: true,
+        message: 'A booking already exists for this email within the last 24 hours',
+        bookingId: existingBooking.id,
+      });
+    }
+
+    // ==================== CREATE BOOKING ====================
+
+    const bookingData = {
+      fullName: sanitizedData.fullName,
+      email: sanitizedData.email,
+      phone: sanitizedData.phone,
+      intent: sanitizedData.intent,
+      slotDateTime: sanitizedData.slotDateTime,
+      status: 'Booking Confirmed',
+      submittedAt: new Date().toISOString(),
+      source: 'web-form',
     };
 
-    console.log('Starting unified booking for:', sanitizedData.email);
+    // Save to data provider (Google Sheets)
+    const bookingId = await dataProvider.appendBooking(bookingData);
 
-    // Check for duplicate bookings (same email within last 24 hours)
-    let existingBooking;
+    logger.info('✅ Booking created', { bookingId, email: sanitizedData.email });
+
+    // ==================== CREATE GOOGLE CALENDAR EVENT ====================
+
+    // Create calendar event (non-blocking - booking succeeds even if this fails)
+    let calendarResult = { eventId: null, eventLink: null };
     try {
-      existingBooking = await findExistingBooking(sanitizedData.email);
-      if (existingBooking) {
-        console.log(`Duplicate booking detected for email: ${sanitizedData.email}`);
-        return {
-          message: 'A booking already exists for this email',
-          isDuplicate: true,
-          existingBooking
-        };
+      logger.info('📅 Creating Google Calendar event...');
+      calendarResult = await createCalendarEvent(bookingData);
+      
+      if (calendarResult.eventId) {
+        logger.info('✅ Calendar event created', { 
+          eventId: calendarResult.eventId,
+          bookingId 
+        });
+      } else {
+        logger.warn('⚠️  Calendar event not created', { 
+          reason: calendarResult.error || 'Unknown',
+          bookingId 
+        });
       }
-    } catch (error) {
-      console.warn('Could not check for duplicates:', error.message);
-      // Continue anyway
-    }
-
-    // Create complete booking entry in Google Sheets
-    let bookingId;
-    try {
-      console.log('Attempting to save booking to Google Sheets...');
-      bookingId = await appendBookingToSheet({
-        fullName: sanitizedData.fullName,
-        email: sanitizedData.email,
-        phone: sanitizedData.phone,
-        status: 'Booking Confirmed',
-        intent: sanitizedData.intent,
-        slotDateTime: sanitizedData.slotDateTime,
-        submittedAt: sanitizedData.timestamp,
-        source: 'unified_booking'
+    } catch (calendarError) {
+      // Don't fail the booking if calendar fails
+      logger.warn('⚠️  Calendar creation failed (non-blocking)', { 
+        error: calendarError.message,
+        bookingId 
       });
-      console.log('✓ Booking saved to Google Sheets. ID:', bookingId);
-    } catch (error) {
-      console.error('❌ Google Sheets error:', error.message);
-      throw new Error(`Failed to save booking: ${error.message}`);
     }
 
-    // Send Telegram alert for booking (non-blocking - don't fail if this errors)
+    // ==================== SEND NOTIFICATIONS ====================
+
+    // Send booking confirmation notification
     try {
-      console.log('Sending Telegram alert...');
-      await sendTelegramAlert({
-        type: 'BOOKING_CONFIRMED',
-        fullName: sanitizedData.fullName,
-        email: sanitizedData.email,
-        phone: sanitizedData.phone,
-        intent: sanitizedData.intent,
-        slotDateTime: sanitizedData.slotDateTime
+      await notificationProvider.sendBookingConfirmation({
+        fullName: bookingData.fullName,
+        email: bookingData.email,
+        phone: bookingData.phone,
+        intent: bookingData.intent,
+        slotDateTime: bookingData.slotDateTime,
       });
-      console.log('✓ Telegram alert sent');
-    } catch (error) {
-      console.warn('⚠️ Telegram alert failed (non-critical):', error.message);
+      logger.info('✓ Notification sent', { bookingId });
+    } catch (notifError) {
+      // Don't fail the booking if notification fails
+      logger.warn('⚠️  Notification failed', { error: notifError.message });
     }
 
-    // Send confirmation email (non-blocking - don't fail if this errors)
-    try {
-      await sendConfirmationEmail(sanitizedData);
-      console.log('✓ Confirmation email initiated');
-    } catch (error) {
-      console.warn('⚠️ Email sending failed (non-critical):', error.message);
-    }
+    // ==================== SUCCESS RESPONSE ====================
 
-    console.log(`✓ Unified booking confirmed. Booking ID: ${bookingId}, Slot: ${sanitizedData.slotDateTime}`);
-
-    return {
+    return res.status(201).json({
+      ok: true,
       bookingId,
       message: 'Booking confirmed successfully!',
       bookedTime: sanitizedData.slotDateTime,
-      clientEmail: sanitizedData.email
-    };
+      clientEmail: sanitizedData.email,
+      eventId: calendarResult.eventId,
+      eventLink: calendarResult.eventLink,
+      calendarCreated: !!calendarResult.eventId,
+    });
+
   } catch (error) {
-    console.error('handleUnifiedBooking error:', error.message);
-    throw error;
+    // Error handling
+    handleApiError(error, req, res);
   }
-}
-
-// ============================================
-// GOOGLE SHEETS OPERATIONS
-// ============================================
-
-async function appendBookingToSheet(bookingData) {
-  console.log('appendBookingToSheet called with email:', bookingData.email);
-  
-  // Verify environment variables
-  if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
-    throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL not configured');
-  }
-  if (!process.env.GOOGLE_PRIVATE_KEY) {
-    throw new Error('GOOGLE_PRIVATE_KEY not configured');
-  }
-  if (!process.env.GOOGLE_SHEET_ID) {
-    throw new Error('GOOGLE_SHEET_ID not configured');
-  }
-
-  const auth = getGoogleAuth();
-  const sheets = google.sheets({ version: 'v4', auth });
-  
-  const bookingId = 'B-' + Date.now();
-  const slotDate = new Date(bookingData.slotDateTime);
-  const slotFormatted = slotDate.toLocaleString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-
-  const values = [[
-    bookingId,
-    bookingData.fullName,
-    bookingData.email,
-    bookingData.phone,
-    bookingData.status,
-    bookingData.submittedAt,
-    slotFormatted,
-    bookingData.slotDateTime,
-    bookingData.intent,
-    bookingData.source,
-    new Date().toISOString()
-  ]];
-
-  try {
-    console.log('Appending to sheet:', process.env.GOOGLE_SHEET_NAME || 'Bookings');
-    const response = await sheets.spreadsheets.values.append({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: `${process.env.GOOGLE_SHEET_NAME || 'Bookings'}!A:K`,
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: { values }
-    });
-
-    console.log(`✓ Booking saved to Sheets. ID: ${bookingId}, Updated cells: ${response.data.updates?.updatedCells}`);
-    return bookingId;
-  } catch (error) {
-    console.error('❌ Google Sheets error details:', {
-      message: error.message,
-      code: error.code,
-      status: error.status,
-      errors: error.errors
-    });
-    throw new Error(`Failed to save booking to Google Sheets: ${error.message}`);
-  }
-}
-
-async function findExistingBooking(email) {
-  const auth = getGoogleAuth();
-  const sheets = google.sheets({ version: 'v4', auth });
-
-  try {
-    const spreadsheetId = process.env.GOOGLE_SHEET_ID;
-    const sheetName = process.env.GOOGLE_SHEET_NAME || 'Bookings';
-
-    const result = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `${sheetName}!A:C`
-    });
-
-    const rows = result.data.values || [];
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i][2] === email) {
-        const submittedAt = rows[i][5];
-        if (submittedAt) {
-          const submitted = new Date(submittedAt);
-          if (submitted > oneDayAgo) {
-            return {
-              id: rows[i][0],
-              name: rows[i][1],
-              email: rows[i][2]
-            };
-          }
-        }
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.warn('Error checking for existing booking:', error.message);
-    return null;
-  }
-}
-
-// ============================================
-// EMAIL SENDING
-// ============================================
-
-async function sendConfirmationEmail(bookingData) {
-  // For now, log as placeholder. In production, use SendGrid, Mailgun, or Gmail API
-  console.log(`Confirmation email would be sent to: ${bookingData.email}`);
-  console.log(`Subject: Your Booking Confirmed - ${bookingData.slotDateTime}`);
-  
-  // TODO: Implement actual email sending
-  // const nodemailer = require('nodemailer');
-  // OR use gmail API like in book-slot.js
-}
-
-// ============================================
-// TELEGRAM ALERTS
-// ============================================
-
-async function sendTelegramAlert(alertData) {
-  const botToken = process.env.TG_BOT_TOKEN;
-  const chatId = process.env.TG_CHAT_ID;
-
-  if (!botToken || !chatId) {
-    console.warn('⚠️ Telegram not configured (missing token or chat ID), skipping alert');
-    return;
-  }
-
-  try {
-    // Validate chat ID format (should be numeric or start with -)
-    if (!/^-?\d+$/.test(String(chatId).trim())) {
-      console.error(`❌ Telegram chat ID invalid format: "${chatId}" (must be numeric, e.g., 123456789 or -987654321 for groups)`);
-      return;
-    }
-
-    const message = buildTelegramMessage(alertData);
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        parse_mode: 'Markdown'
-      })
-    });
-
-    const responseData = await response.json();
-
-    if (!response.ok) {
-      console.error(`❌ Telegram API error (${response.status}):`, responseData.description || responseData.error_code);
-      return;
-    }
-
-    console.log(`✓ Telegram alert sent: ${alertData.type}`);
-  } catch (error) {
-    console.error('❌ Telegram alert failed:', error.message);
-    // Non-blocking - don't fail the booking if Telegram fails
-  }
-}
-
-function buildTelegramMessage(alertData) {
-  const { type, fullName, email, phone, intent, slotDateTime } = alertData;
-
-  if (type === 'BOOKING_CONFIRMED') {
-    const slotDate = new Date(slotDateTime).toLocaleString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    
-    return `✅ *NEW BOOKING CONFIRMED*\n\n*Name:* ${fullName}\n*Email:* ${email}\n*Phone:* ${phone}\n*Goal:* ${intent}\n*Slot:* ${slotDate}\n\n[Message on WhatsApp](https://wa.me/${phone.replace(/\D/g, '')})`;
-  }
-
-  return '📌 New notification from booking system';
-}
-
-/**
- * Check rate limit for IP address
- */
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const record = rateLimitStore.get(ip);
-
-  if (!record) {
-    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return { allowed: true };
-  }
-
-  // Reset if window expired
-  if (now > record.resetAt) {
-    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return { allowed: true };
-  }
-
-  // Check if limit exceeded
-  if (record.count >= RATE_LIMIT_MAX) {
-    return { allowed: false };
-  }
-
-  // Increment count
-  record.count++;
-  rateLimitStore.set(ip, record);
-  return { allowed: true };
-}
-
-// ============================================
-// VALIDATION
-// ============================================
-
-// ============================================
-// VALIDATION
-// ============================================
-
-function validateBookingInput(data) {
-  if (!data.fullName || typeof data.fullName !== 'string' || data.fullName.trim().length === 0) {
-    return { valid: false, error: 'Full Name is required' };
-  }
-
-  if (data.fullName.length > 100) {
-    return { valid: false, error: 'Full Name must be less than 100 characters' };
-  }
-
-  if (!data.email || typeof data.email !== 'string') {
-    return { valid: false, error: 'Email is required' };
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(data.email)) {
-    return { valid: false, error: 'Invalid email format' };
-  }
-
-  if (!data.phone || typeof data.phone !== 'string') {
-    return { valid: false, error: 'Phone is required' };
-  }
-
-  const cleanPhone = data.phone.replace(/[\s\-()]/g, '');
-  const phonePattern = /^\+[1-9]\d{1,14}$/;
-  if (!phonePattern.test(cleanPhone)) {
-    return { valid: false, error: 'Invalid phone format (needs country code)' };
-  }
-
-  if (!data.intent || typeof data.intent !== 'string' || data.intent.trim().length === 0) {
-    return { valid: false, error: 'Investment intent is required' };
-  }
-
-  if (!data.slotDateTime || typeof data.slotDateTime !== 'string') {
-    return { valid: false, error: 'Slot date/time is required' };
-  }
-
-  const dateObj = new Date(data.slotDateTime);
-  if (isNaN(dateObj.getTime())) {
-    return { valid: false, error: 'Invalid datetime format' };
-  }
-
-  return { valid: true };
-}
-
-function validateFormInput(data) {
-  if (!data.fullName || typeof data.fullName !== 'string' || data.fullName.trim().length === 0) {
-    return { valid: false, error: 'Full Name is required' };
-  }
-
-  if (data.fullName.length > 100) {
-    return { valid: false, error: 'Full Name must be less than 100 characters' };
-  }
-
-  if (!data.email || typeof data.email !== 'string') {
-    return { valid: false, error: 'Email is required' };
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(data.email)) {
-    return { valid: false, error: 'Invalid email format' };
-  }
-
-  if (!data.phone || typeof data.phone !== 'string') {
-    return { valid: false, error: 'Phone is required' };
-  }
-
-  const phonePattern = /^\+?[1-9]\d{1,14}$/;
-  if (!phonePattern.test(data.phone.replace(/[\s\-()]/g, ''))) {
-    return { valid: false, error: 'Invalid phone format (needs country code)' };
-  }
-
-  if (!data.intent || typeof data.intent !== 'string' || data.intent.trim().length === 0) {
-    return { valid: false, error: 'Investment intent is required' };
-  }
-
-  return { valid: true };
-}
-
-// ============================================
-// SECURITY & UTILITY FUNCTIONS
-// ============================================
-
-function getGoogleAuth() {
-  const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKeyRaw = process.env.GOOGLE_PRIVATE_KEY;
-  
-  if (!serviceAccountEmail) {
-    throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL is not set');
-  }
-  if (!privateKeyRaw) {
-    throw new Error('GOOGLE_PRIVATE_KEY is not set');
-  }
-
-  const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
-  
-  console.log('Creating JWT auth with email:', serviceAccountEmail);
-  console.log('Private key length:', privateKey.length);
-  
-  try {
-    const auth = new google.auth.JWT({
-      email: serviceAccountEmail,
-      key: privateKey,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets']
-    });
-    console.log('✓ JWT auth created successfully');
-    return auth;
-  } catch (error) {
-    console.error('❌ Failed to create JWT auth:', error.message);
-    throw error;
-  }
-}
-
-function sanitize(input) {
-  if (!input || typeof input !== 'string') return '';
-
-  return input
-    .trim()
-    .replace(/[<>]/g, '')
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+=/gi, '')
-    .substring(0, 1000);
-}
-
-function isOriginAllowed(origin) {
-  if (!origin) return false;
-  
-  const normalizedOrigin = origin.replace(/\/$/, '');
-  
-  return ALLOWED_ORIGINS.some(allowed => 
-    normalizedOrigin === allowed || 
-    normalizedOrigin.startsWith(allowed)
-  );
-}
-
-function getClientIp(req) {
-  return req.headers['x-forwarded-for']?.split(',')[0].trim() || 
-         req.headers['x-real-ip'] || 
-         req.connection?.remoteAddress || 
-         'unknown';
-}
-
-/**
- * Check rate limit for IP address
- */
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const record = rateLimitStore.get(ip);
-
-  if (!record) {
-    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return { allowed: true };
-  }
-
-  if (now > record.resetAt) {
-    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return { allowed: true };
-  }
-
-  if (record.count >= RATE_LIMIT_MAX) {
-    return { allowed: false };
-  }
-
-  record.count++;
-  rateLimitStore.set(ip, record);
-  return { allowed: true };
-}
-
-function handleCors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Access-Control-Max-Age', '86400');
-  return res.status(200).end();
-}
-
-function setCorsHeaders(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
 // Export for Vercel

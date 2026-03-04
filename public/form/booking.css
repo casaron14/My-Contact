@@ -740,6 +740,19 @@ body {
     line-height: 1.5;
 }
 
+.calendar-notice {
+    background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+    border-left: 4px solid #0284c7;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+    border-radius: 8px;
+    color: #0c4a6e;
+    font-size: 0.95rem;
+    text-align: center;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.1);
+}
+
 /* Touch device optimizations */
 @media (hover: none) and (pointer: coarse) {
     .slot-button {

@@ -105,3 +105,4 @@ temp/
 secrets/
 private/
 .secrets/
+.vercel
