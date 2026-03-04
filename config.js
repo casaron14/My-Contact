@@ -113,7 +113,7 @@ const config = {
   // ========== APPLICATION SETTINGS ==========
   app: {
     reminderEmail: getEnv('REMINDER_EMAIL', 'noreply@charityaron.com'),
-    timezone: getEnv('BOOKING_TIMEZONE', 'Africa/Johannesburg'),
+    timezone: getEnv('BOOKING_TIMEZONE', 'Africa/Nairobi'),
   },
 
   // ========== BOOKING CONFIGURATION ==========
