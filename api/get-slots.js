@@ -88,10 +88,10 @@ async function handler(req, res) {
       return;
     }
 
-    // Fetch available slots from calendar
+    // Fetch available slots from calendar (calendar API is mandatory)
     const slots = await getAvailableSlots({ daysAhead });
 
-    // Return success response
+    // Return success response with slots data
     res.status(200).json({
       ok: true,
       slots,

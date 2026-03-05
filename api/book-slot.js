@@ -191,12 +191,17 @@ function generateTimeSlots(daysAhead) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Use safe config access with fallbacks
+  const slotStartHour = config?.booking?.slotStartHour || 16;
+  const slotEndHour = config?.booking?.slotEndHour || 21;
+  const slotDurationMin = config?.booking?.slotDurationMin || 30;
+
   for (let dayOffset = 1; dayOffset <= daysAhead; dayOffset++) {
     const day = new Date(today);
     day.setDate(day.getDate() + dayOffset);
 
-    for (let hour = config.booking.slotStartHour; hour < config.booking.slotEndHour; hour++) {
-      for (let min = 0; min < 60; min += config.booking.slotDurationMin) {
+    for (let hour = slotStartHour; hour < slotEndHour; hour++) {
+      for (let min = 0; min < 60; min += slotDurationMin) {
         const slotTime = new Date(day);
         slotTime.setHours(hour, min, 0, 0);
 
@@ -218,22 +223,24 @@ function generateTimeSlots(daysAhead) {
  * @returns {Promise<Array>} Array of available slots with their availability status
  */
 async function getAvailableSlots(options = {}) {
-  const { daysAhead = config.booking.daysAvailable } = options;
+  let daysAhead;
+  try {
+    daysAhead = options.daysAhead || config.booking.daysAvailable || 3;
+  } catch (configError) {
+    logger.warn('⚠️  Config access failed, using default daysAhead=3', { error: configError.message });
+    daysAhead = 3;
+  }
   
   try {
-    logger.info('📅 Fetching available slots', { daysAhead });
+    logger.info('📅 Fetching available slots from Google Calendar', { daysAhead });
     
     const auth = createCalendarAuth();
     
     if (!auth) {
-      // In dev mode, return all potential slots
-      logger.info('📅 [DEV MODE] Returning all slots without calendar check');
-      const allSlots = generateTimeSlots(daysAhead);
-      return allSlots.map(slot => ({
-        dateTime: slot.toISOString(),
-        available: true,
-        isDevelopment: true,
-      }));
+      throw new Error(
+        'Calendar API not configured. GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY are required. ' +
+        'Please set these environment variables in Vercel Dashboard.'
+      );
     }
 
     // Generate all potential slots
@@ -245,21 +252,36 @@ async function getAvailableSlots(options = {}) {
     const timeMax = new Date();
     timeMax.setDate(timeMax.getDate() + daysAhead);
     
-    const response = await calendar.events.list({
-      calendarId: 'primary',
-      timeMin: timeMin.toISOString(),
-      timeMax: timeMax.toISOString(),
-      singleEvents: true,
-      orderBy: 'startTime',
-    });
-
-    const bookedEvents = response.data.items || [];
+    let bookedEvents = [];
+    try {
+      const response = await calendar.events.list({
+        calendarId: 'primary',
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMax.toISOString(),
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
+      bookedEvents = response.data.items || [];
+    } catch (calendarError) {
+      logger.error('❌ Calendar API call failed', {
+        error: calendarError.message,
+        code: calendarError.code,
+      });
+      
+      // Calendar API is mandatory - throw error instead of fallback
+      throw new Error(
+        `Calendar API Error: ${calendarError.message}. ` +
+        `Code: ${calendarError.code || 'unknown'}. ` +
+        'Calendar access is required for booking slot availability.'
+      );
+    }
     logger.info(`📅 Found ${bookedEvents.length} existing calendar events`);
 
     // Check each slot against existing events
+    const slotDurationMin = config?.booking?.slotDurationMin || 30;
     const availableSlots = potentialSlots.map(slot => {
       const slotStart = slot.getTime();
-      const slotEnd = slotStart + (config.booking.slotDurationMin * 60 * 1000);
+      const slotEnd = slotStart + (slotDurationMin * 60 * 1000);
       
       // Check if this slot conflicts with any existing event
       const hasConflict = bookedEvents.some(event => {
@@ -282,14 +304,12 @@ async function getAvailableSlots(options = {}) {
 
     return availableSlots;
   } catch (error) {
-    logger.error('Error fetching available slots', { error: error.message });
-    // On error, return all slots as available to not break the booking system
-    const allSlots = generateTimeSlots(daysAhead);
-    return allSlots.map(slot => ({
-      dateTime: slot.toISOString(),
-      available: true,
+    logger.error('❌ Fatal error in getAvailableSlots', {
       error: error.message,
-    }));
+      stack: error.stack,
+    });
+    // Calendar API is mandatory - propagate error to caller
+    throw error;
   }
 }
 
