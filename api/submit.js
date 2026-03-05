@@ -24,10 +24,10 @@
 
 'use strict';
 
-const { google } = require('googleapis');
 const config = require('../config');
 const { createDataProvider } = require('../lib/providers/DataProvider');
 const { createNotificationProvider } = require('../lib/providers/NotificationProvider');
+const { createCalendarEvent } = require('./book-slot');
 const {
   validateBookingInput,
   sanitizeInput,
@@ -43,117 +43,6 @@ const {
 const dataProvider = createDataProvider('google-sheets');
 const notificationProvider = createNotificationProvider('auto');
 const securityMiddleware = createSecurityMiddleware();
-
-/**
- * Create Google Calendar authentication
- */
-function createCalendarAuth() {
-  if (!config.google.serviceAccountEmail || !config.google.privateKey) {
-    if (config.isProduction()) {
-      logger.warn('⚠️  Google Calendar not configured - calendar events will be skipped');
-    }
-    return null; // Dev mode or missing credentials
-  }
-
-  return new google.auth.JWT({
-    email: config.google.serviceAccountEmail,
-    key: config.google.privateKey,
-    scopes: [
-      'https://www.googleapis.com/auth/calendar',
-      'https://www.googleapis.com/auth/gmail.send',
-    ],
-  });
-}
-
-/**
- * Create Google Calendar event (non-blocking)
- */
-async function createCalendarEvent(bookingData) {
-  try {
-    const auth = createCalendarAuth();
-    
-    if (!auth) {
-      logger.info('📅 [DEV MODE] Calendar event creation skipped');
-      return {
-        eventId: `dev-${Date.now()}`,
-        eventLink: '#',
-        isDevelopment: true,
-      };
-    }
-
-    const calendar = google.calendar({ version: 'v3', auth });
-
-    const startTime = new Date(bookingData.slotDateTime);
-    const endTime = new Date(startTime.getTime() + 30 * 60 * 1000); // 30 minutes
-
-    const eventBody = {
-      summary: `Strategy Session - ${bookingData.fullName}`,
-      description: buildEventDescription(bookingData),
-      start: {
-        dateTime: startTime.toISOString(),
-        timeZone: config.app.timezone,
-      },
-      end: {
-        dateTime: endTime.toISOString(),
-        timeZone: config.app.timezone,
-      },
-      attendees: [
-        {
-          email: bookingData.email,
-          displayName: bookingData.fullName,
-        },
-      ],
-      reminders: {
-        useDefault: true,
-      },
-    };
-
-    const event = await calendar.events.insert({
-      calendarId: 'primary',
-      resource: eventBody,
-      sendUpdates: 'all', // Send calendar invites to attendees
-    });
-
-    logger.info('✅ Calendar event created', { eventId: event.data.id });
-
-    return {
-      eventId: event.data.id,
-      eventLink: event.data.htmlLink,
-      isDevelopment: false,
-    };
-  } catch (error) {
-    // Non-blocking: Log error but don't fail the booking
-    logger.error('❌ Calendar event creation failed (non-blocking)', { error: error.message });
-    return {
-      eventId: null,
-      eventLink: null,
-      error: error.message,
-    };
-  }
-}
-
-/**
- * Build event description from booking data
- */
-function buildEventDescription(bookingData) {
-  return `Cryptocurrency Investment Strategy Session
-
-📋 Client Information:
-- Name: ${bookingData.fullName}
-- Email: ${bookingData.email}
-- Phone: ${bookingData.phone || 'Not provided'}
-- Primary Goal: ${bookingData.intent || 'Not specified'}
-
-📅 Session Details:
-- Duration: 30 minutes
-- Type: Cryptocurrency Investment Strategy Consultation
-- Focus Areas: Investment planning, blockchain technology, Web3 solutions
-
-✅ Pre-Session:
-- Please have your investment goals ready
-- Prepare any questions about cryptocurrency
-- Have relevant financial documents available if applicable`;
-}
 
 /**
  * Main API handler

@@ -8,8 +8,9 @@
 .env.development.local
 *.env
 env.js
-config.production.js
+# config.production.js - ALLOWED (contains only public info)
 config.*.js
+!public/config.production.js
 !public/config.example.js
 
 # ============================================
