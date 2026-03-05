@@ -391,6 +391,24 @@
 
                 log(`API response: ${response.status} ${response.statusText}`);
 
+                // Check if response is JSON before parsing
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    // Server returned non-JSON response (likely an error page)
+                    const text = await response.text();
+                    logError(`Non-JSON response received: ${text.substring(0, 100)}`);
+                    
+                    if (response.status === 403) {
+                        throw new Error('Access forbidden. Please ensure you are accessing from the correct domain.');
+                    } else if (response.status === 429) {
+                        throw new Error('Too many requests. Please wait a few minutes and try again.');
+                    } else if (response.status >= 500) {
+                        throw new Error('Server error. Please try again in a few moments.');
+                    } else {
+                        throw new Error(`Server returned an error (${response.status}). Please try again.`);
+                    }
+                }
+
                 result = await response.json();
                 
                 // Log the full response for debugging
