@@ -142,8 +142,7 @@ async function createCalendarEvent(bookingData) {
 }
 
 /**
- * Check slot availability (can be extended in the future)
- * Currently returns true - can be enhanced to check calendar availability
+ * Check slot availability against Google Calendar
  * 
  * @param {string} slotDateTime - ISO datetime string
  * @returns {Promise<boolean>} Whether the slot is available
@@ -157,9 +156,23 @@ async function checkSlotAvailability(slotDateTime) {
       return true;
     }
 
-    // TODO: Implement actual calendar availability check
-    // For now, return true (all slots available)
-    return true;
+    const calendar = google.calendar({ version: 'v3', auth });
+    const startTime = new Date(slotDateTime);
+    const endTime = new Date(startTime.getTime() + config.booking.slotDurationMin * 60 * 1000);
+
+    // Check for conflicting events
+    const response = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: startTime.toISOString(),
+      timeMax: endTime.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime',
+    });
+
+    // If there are any events in this time slot, it's not available
+    const isAvailable = !response.data.items || response.data.items.length === 0;
+    
+    return isAvailable;
   } catch (error) {
     logger.error('Error checking slot availability', { error: error.message });
     // On error, assume slot is available to not block bookings
@@ -168,25 +181,115 @@ async function checkSlotAvailability(slotDateTime) {
 }
 
 /**
- * Get available time slots for booking
- * Can be used as an API endpoint in the future
+ * Generate time slots based on configuration
+ * 
+ * @param {number} daysAhead - Number of days to look ahead
+ * @returns {Array<Date>} Array of potential time slots
+ */
+function generateTimeSlots(daysAhead) {
+  const slots = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let dayOffset = 1; dayOffset <= daysAhead; dayOffset++) {
+    const day = new Date(today);
+    day.setDate(day.getDate() + dayOffset);
+
+    for (let hour = config.booking.slotStartHour; hour < config.booking.slotEndHour; hour++) {
+      for (let min = 0; min < 60; min += config.booking.slotDurationMin) {
+        const slotTime = new Date(day);
+        slotTime.setHours(hour, min, 0, 0);
+
+        if (slotTime > new Date()) {
+          slots.push(slotTime);
+        }
+      }
+    }
+  }
+
+  return slots;
+}
+
+/**
+ * Get available time slots for booking by checking calendar
  * 
  * @param {Object} options - Query options
- * @param {number} options.daysAhead - Number of days to look ahead (default: 7)
- * @returns {Promise<Array>} Array of available slots
+ * @param {number} options.daysAhead - Number of days to look ahead (default: from config)
+ * @returns {Promise<Array>} Array of available slots with their availability status
  */
 async function getAvailableSlots(options = {}) {
-  const { daysAhead = 7 } = options;
+  const { daysAhead = config.booking.daysAvailable } = options;
   
   try {
     logger.info('📅 Fetching available slots', { daysAhead });
     
-    // TODO: Implement actual slot fetching from calendar
-    // For now, return empty array
-    return [];
+    const auth = createCalendarAuth();
+    
+    if (!auth) {
+      // In dev mode, return all potential slots
+      logger.info('📅 [DEV MODE] Returning all slots without calendar check');
+      const allSlots = generateTimeSlots(daysAhead);
+      return allSlots.map(slot => ({
+        dateTime: slot.toISOString(),
+        available: true,
+        isDevelopment: true,
+      }));
+    }
+
+    // Generate all potential slots
+    const potentialSlots = generateTimeSlots(daysAhead);
+    
+    // Get all calendar events for the date range
+    const calendar = google.calendar({ version: 'v3', auth });
+    const timeMin = new Date();
+    const timeMax = new Date();
+    timeMax.setDate(timeMax.getDate() + daysAhead);
+    
+    const response = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime',
+    });
+
+    const bookedEvents = response.data.items || [];
+    logger.info(`📅 Found ${bookedEvents.length} existing calendar events`);
+
+    // Check each slot against existing events
+    const availableSlots = potentialSlots.map(slot => {
+      const slotStart = slot.getTime();
+      const slotEnd = slotStart + (config.booking.slotDurationMin * 60 * 1000);
+      
+      // Check if this slot conflicts with any existing event
+      const hasConflict = bookedEvents.some(event => {
+        const eventStart = new Date(event.start.dateTime || event.start.date).getTime();
+        const eventEnd = new Date(event.end.dateTime || event.end.date).getTime();
+        
+        // Check for overlap: slot starts before event ends AND slot ends after event starts
+        return slotStart < eventEnd && slotEnd > eventStart;
+      });
+
+      return {
+        dateTime: slot.toISOString(),
+        available: !hasConflict,
+        isDevelopment: false,
+      };
+    });
+
+    const availableCount = availableSlots.filter(s => s.available).length;
+    logger.info(`📅 Found ${availableCount}/${potentialSlots.length} available slots`);
+
+    return availableSlots;
   } catch (error) {
     logger.error('Error fetching available slots', { error: error.message });
-    return [];
+    // On error, return all slots as available to not break the booking system
+    const allSlots = generateTimeSlots(daysAhead);
+    return allSlots.map(slot => ({
+      dateTime: slot.toISOString(),
+      available: true,
+      error: error.message,
+    }));
   }
 }
 

@@ -11,6 +11,7 @@
         SLOT_DURATION_MIN: 30,
         DAYS_AVAILABLE: 3,
         API_ENDPOINT: '/api/submit',
+        SLOTS_API_ENDPOINT: '/api/get-slots',
         DEBUG: true
     };
 
@@ -80,9 +81,9 @@
     }
 
     /**
-     * Generate available time slots (4 PM - 8 PM, 30-min increments, next 3 days starting tomorrow)
+     * Generate available time slots locally (fallback method)
      */
-    function generateAvailableSlots() {
+    function generateAvailableSlotsLocally() {
         try {
             const slots = [];
             const today = new Date();
@@ -104,11 +105,52 @@
                 }
             }
 
-            log(`Generated ${slots.length} available slots`);
+            log(`Generated ${slots.length} available slots locally`);
             return slots;
         } catch (error) {
-            logError(`Slot generation failed: ${error.message}`);
+            logError(`Local slot generation failed: ${error.message}`);
             return [];
+        }
+    }
+
+    /**
+     * Fetch available slots from the API (checks calendar for conflicts)
+     */
+    async function fetchAvailableSlots() {
+        try {
+            log('Fetching available slots from calendar API...');
+            
+            const response = await fetch(CONFIG.SLOTS_API_ENDPOINT, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`API returned ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            if (!data.ok || !data.slots) {
+                throw new Error('Invalid API response format');
+            }
+
+            // Filter to only available slots and convert to Date objects
+            const availableSlots = data.slots
+                .filter(slot => slot.available)
+                .map(slot => new Date(slot.dateTime))
+                .filter(date => date > new Date()); // Ensure slot is in the future
+
+            log(`Fetched ${availableSlots.length} available slots from calendar (${data.meta.bookedSlots} slots are booked)`);
+            
+            return availableSlots;
+        } catch (error) {
+            logError(`Failed to fetch slots from API: ${error.message}`);
+            log('Falling back to local slot generation');
+            // Fall back to local generation if API fails
+            return generateAvailableSlotsLocally();
         }
     }
 
@@ -133,18 +175,21 @@
     }
 
     /**
-     * Render available slots
+     * Render available slots (async to fetch from API)
      */
-    function renderSlots() {
+    async function renderSlots() {
         try {
             if (!DOM.slotsContainer) {
                 logError('slotsContainer not found');
                 return;
             }
 
-            const slots = generateAvailableSlots();
+            // Show loading state
+            DOM.slotsContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #666;">🔄 Loading available slots...</p>';
+
+            const slots = await fetchAvailableSlots();
             if (slots.length === 0) {
-                DOM.slotsContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">No available slots at the moment.</p>';
+                DOM.slotsContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">No available slots at the moment. All slots are currently booked.</p>';
                 return;
             }
 
@@ -630,7 +675,7 @@ END:VCALENDAR`;
     /**
      * Initialize
      */
-    function init() {
+    async function init() {
         try {
             log('Initializing booking system...');
 
@@ -645,8 +690,8 @@ END:VCALENDAR`;
                 DOM.currentYear.textContent = new Date().getFullYear();
             }
 
-            // Render available slots
-            renderSlots();
+            // Render available slots (async - fetches from calendar API)
+            await renderSlots();
 
             // Attach event listeners
             if (DOM.backButton) {
