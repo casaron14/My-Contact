@@ -31,26 +31,26 @@
 
 'use strict';
 
-const { applyCors, applyRateLimit, logger } = require('../lib/middleware');
+const { createSecurityMiddleware, handleApiError, logger } = require('../lib/middleware');
 const { getAvailableSlots } = require('./book-slot');
 const config = require('../config');
+
+// Initialize security middleware
+const securityMiddleware = createSecurityMiddleware();
 
 /**
  * Main handler for get-slots endpoint
  */
 async function handler(req, res) {
   try {
-    // Apply CORS headers
-    applyCors(req, res);
-
-    // Handle preflight OPTIONS request
-    if (req.method === 'OPTIONS') {
-      res.status(200).end();
-      return;
+    // Apply security middleware (CORS + rate limiting)
+    const securityCheck = await securityMiddleware(req, res);
+    if (securityCheck !== null) {
+      return; // Security middleware handled the response
     }
 
-    // Only allow GET requests
-    if (req.method !== 'GET') {
+    // Only allow GET and OPTIONS requests
+    if (req.method !== 'GET' && req.method !== 'OPTIONS') {
       res.status(405).json({
         ok: false,
         error: 'Method not allowed. Use GET.',
@@ -58,14 +58,9 @@ async function handler(req, res) {
       return;
     }
 
-    // Apply rate limiting (lighter rate limit for slot fetching)
-    const rateLimitResult = applyRateLimit(req);
-    if (!rateLimitResult.allowed) {
-      res.status(429).json({
-        ok: false,
-        error: 'Too many requests. Please try again later.',
-        retryAfter: rateLimitResult.retryAfter,
-      });
+    // Handle OPTIONS preflight
+    if (req.method === 'OPTIONS') {
+      res.status(200).end();
       return;
     }
 
@@ -118,11 +113,23 @@ async function handler(req, res) {
     logger.error('❌ Error in get-slots endpoint', {
       error: error.message,
       stack: error.stack,
+      code: error.code,
+      fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
     });
+
+    // In development, show more details
+    if (process.env.NODE_ENV === 'development') {
+      console.error('\n🔴 DETAILED ERROR IN GET-SLOTS:');
+      console.error('Message:', error.message);
+      console.error('Code:', error.code);
+      console.error('Stack:', error.stack);
+      console.error('Full error:', error);
+    }
 
     res.status(500).json({
       ok: false,
       error: 'Failed to fetch available slots. Please try again.',
+      ...(process.env.NODE_ENV === 'development' && { debugError: error.message }),
     });
   }
 }

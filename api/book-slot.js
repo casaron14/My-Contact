@@ -254,8 +254,12 @@ async function getAvailableSlots(options = {}) {
     
     let bookedEvents = [];
     try {
+      const calendarIdToUse = config.google.calendarId || 'primary';
+      console.log(`\n🔍 DEBUG: Using calendar ID: "${calendarIdToUse}"`);
+      console.log(`🔍 DEBUG: Time range: ${timeMin.toISOString()} to ${timeMax.toISOString()}`);
+      
       const response = await calendar.events.list({
-        calendarId: config.google.calendarId || 'primary',
+        calendarId: calendarIdToUse,
         timeMin: timeMin.toISOString(),
         timeMax: timeMax.toISOString(),
         singleEvents: true,
@@ -263,6 +267,13 @@ async function getAvailableSlots(options = {}) {
       });
       bookedEvents = response.data.items || [];
     } catch (calendarError) {
+      console.error('\n🔴 CALENDAR API ERROR:');
+      console.error('  Message:', calendarError.message);
+      console.error('  Code:', calendarError.code);
+      console.error('  Status:', calendarError.status);
+      console.error('  Errors:', calendarError.errors);
+      console.error('  Full error:', JSON.stringify(calendarError, null, 2));
+      
       logger.error('❌ Calendar API call failed', {
         error: calendarError.message,
         code: calendarError.code,
