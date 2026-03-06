@@ -118,7 +118,7 @@ async function createCalendarEvent(bookingData) {
     };
 
     const event = await calendar.events.insert({
-      calendarId: 'primary',
+      calendarId: config.google.calendarId || 'primary',
       resource: eventBody,
       sendUpdates: 'all', // Send calendar invites to attendees
     });
@@ -162,7 +162,7 @@ async function checkSlotAvailability(slotDateTime) {
 
     // Check for conflicting events
     const response = await calendar.events.list({
-      calendarId: 'primary',
+      calendarId: config.google.calendarId || 'primary',
       timeMin: startTime.toISOString(),
       timeMax: endTime.toISOString(),
       singleEvents: true,
@@ -255,7 +255,7 @@ async function getAvailableSlots(options = {}) {
     let bookedEvents = [];
     try {
       const response = await calendar.events.list({
-        calendarId: 'primary',
+        calendarId: config.google.calendarId || 'primary',
         timeMin: timeMin.toISOString(),
         timeMax: timeMax.toISOString(),
         singleEvents: true,

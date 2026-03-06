@@ -147,10 +147,9 @@
             
             return availableSlots;
         } catch (error) {
-            logError(`Failed to fetch slots from API: ${error.message}`);
-            log('Falling back to local slot generation');
-            // Fall back to local generation if API fails
-            return generateAvailableSlotsLocally();
+            logError(`❌ CRITICAL: Failed to fetch slots from calendar API: ${error.message}`);
+            // Don't fall back - throw error to show user the real problem
+            throw error;
         }
     }
 
@@ -187,7 +186,27 @@
             // Show loading state
             DOM.slotsContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #666;">🔄 Loading available slots...</p>';
 
-            const slots = await fetchAvailableSlots();
+            let slots;
+            try {
+                slots = await fetchAvailableSlots();
+            } catch (error) {
+                // Show visible error to user instead of silent fallback
+                DOM.slotsContainer.innerHTML = `
+                    <div style="grid-column: 1/-1; padding: 20px; background: #fee; border: 2px solid #c33; border-radius: 8px; color: #c33;">
+                        <h3 style="margin: 0 0 10px 0; color: #c33;">❌ Unable to Load Calendar</h3>
+                        <p style="margin: 0 0 10px 0;"><strong>Error:</strong> ${error.message}</p>
+                        <p style="margin: 0; font-size: 14px;">Please check:</p>
+                        <ul style="margin: 10px 0 0 20px; font-size: 14px;">
+                            <li>Calendar API credentials are configured</li>
+                            <li>Service account has access to the calendar</li>
+                            <li>Calendar ID is correct in environment variables</li>
+                        </ul>
+                        <p style="margin: 10px 0 0 0; font-size: 12px; opacity: 0.8;">Check browser console for details.</p>
+                    </div>
+                `;
+                return;
+            }
+            
             if (slots.length === 0) {
                 DOM.slotsContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">No available slots at the moment. All slots are currently booked.</p>';
                 return;

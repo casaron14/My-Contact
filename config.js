@@ -98,6 +98,7 @@ const config = {
     ),
     privateKey: getEnv('GOOGLE_PRIVATE_KEY')?.replace(/\\n/g, '\n') || undefined,
     projectId: getEnv('GOOGLE_PROJECT_ID', undefined, isProduction),
+    calendarId: getEnv('GOOGLE_CALENDAR_ID', 'primary'), // Calendar ID to use for bookings
     sheetsId: getEnv('GOOGLE_SHEET_ID', undefined, isProduction),
     sheetName: getEnv('GOOGLE_SHEET_NAME', 'Bookings'),
   },

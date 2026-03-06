@@ -8,9 +8,8 @@
 .env.development.local
 *.env
 env.js
-# config.production.js - ALLOWED (contains only public info)
+config.production.js
 config.*.js
-!public/config.production.js
 !public/config.example.js
 
 # ============================================
@@ -75,15 +74,6 @@ logs/
 coverage/
 .nyc_output/
 test-results/
-test-*.js
-*-test.js
-*.test.js
-*.spec.js
-__tests__/
-*DIAGNOSTIC*.md
-*ANALYSIS*.md
-*FAILURE*.md
-*TEST*.md
 
 # ============================================
 # CREDENTIALS & KEYS - SECURITY LAYER
