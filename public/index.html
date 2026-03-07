@@ -1,4 +1,12 @@
-<!DOCTYPE html>
+// Suppress MetaMask errors if extension is present but not used
+if (typeof window.ethereum !== 'undefined') {
+    window.addEventListener('error', function(e) {
+        if (e.message && e.message.includes('MetaMask')) {
+            e.preventDefault();
+            console.log('MetaMask extension detected but not in use');
+        }
+    });
+}<!DOCTYPE html>
 <html lang="en">
 
 <head>

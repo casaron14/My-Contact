@@ -110,27 +110,8 @@ async function handler(req, res) {
     });
 
   } catch (error) {
-    logger.error('❌ Error in get-slots endpoint', {
-      error: error.message,
-      stack: error.stack,
-      code: error.code,
-      fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
-    });
-
-    // In development, show more details
-    if (process.env.NODE_ENV === 'development') {
-      console.error('\n🔴 DETAILED ERROR IN GET-SLOTS:');
-      console.error('Message:', error.message);
-      console.error('Code:', error.code);
-      console.error('Stack:', error.stack);
-      console.error('Full error:', error);
-    }
-
-    res.status(500).json({
-      ok: false,
-      error: 'Failed to fetch available slots. Please try again.',
-      ...(process.env.NODE_ENV === 'development' && { debugError: error.message }),
-    });
+    // Use the centralized error handler
+    handleApiError(error, req, res);
   }
 }
 
