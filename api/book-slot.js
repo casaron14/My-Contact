@@ -20,21 +20,43 @@ const { ApiError } = require('../lib/security');
 const { getSlotProvider } = require('../lib/providers/SlotProvider');
 
 /**
+ * Returns the UTC offset in milliseconds for a given timezone at a specific moment.
+ * Positive = east of UTC  (e.g. Africa/Nairobi UTC+3 → +10_800_000 ms)
+ *
+ * This avoids hardcoding the numeric offset and handles hypothetical DST changes.
+ */
+function getTzOffsetMs(timezone, date) {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  });
+  const p = fmt.formatToParts(date).reduce((a, { type, value }) => ((a[type] = value), a), {});
+  let h = parseInt(p.hour, 10);
+  if (h === 24) h = 0; // midnight edge case
+  const localAsUtcMs = Date.UTC(+p.year, +p.month - 1, +p.day, h, +p.minute, +p.second);
+  return localAsUtcMs - date.getTime();
+}
+
+/**
  * Generate time slots based on booking configuration.
  * Rules:
  *   - Monday – Friday only (weekends excluded)
  *   - Each slot is slotDurationMin (25 min) long
  *   - slotBreakMin (5 min) separates consecutive slots  → stride = 30 min
- *   - Window: slotStartHour (16:00) – slotEndHour (18:00)
- *   - Slots: 16:00, 16:30, 17:00, 17:30 (4 per weekday)
+ *   - Window: slotStartHour (16:00) – slotEndHour (18:00) in BOOKING_TIMEZONE
+ *   - Slots: 16:00, 16:30, 17:00, 17:30 EAT (4 per weekday)
+ *
+ * All times are generated in the configured booking timezone (Africa/Nairobi)
+ * and stored as UTC, so they display correctly in any browser timezone.
  *
  * @param {number} daysAhead - Number of calendar days to look ahead
  * @returns {Date[]}
  */
 function generateTimeSlots(daysAhead) {
   const slots = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const timezone = config?.app?.timezone || 'Africa/Nairobi';
 
   const slotStartHour   = config?.booking?.slotStartHour   || 16;
   const slotEndHour     = config?.booking?.slotEndHour     || 18;
@@ -44,23 +66,41 @@ function generateTimeSlots(daysAhead) {
 
   const startMinutes = slotStartHour * 60;
   const endMinutes   = slotEndHour   * 60;
-  const now = new Date();
-
+  const now          = new Date();
   const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
   for (let dayOffset = 0; dayOffset <= daysAhead; dayOffset++) {
-    const day = new Date(today);
-    day.setDate(day.getDate() + dayOffset);
+    // Derive the calendar date for this offset in the booking timezone.
+    // Adding integer 24-hour periods to 'now' and then using toLocaleDateString
+    // works correctly for Africa/Nairobi which has no DST.
+    const probeDate = new Date(now.getTime() + dayOffset * 24 * 60 * 60 * 1000);
+    const dateStr   = probeDate.toLocaleDateString('en-CA', { timeZone: timezone }); // YYYY-MM-DD
 
-    // Weekdays only — skip Saturday (6) and Sunday (0)
-    const dow = day.getDay();
-    if (dow === 0 || dow === 6) continue;
+    // Skip weekends in the booking timezone
+    const weekday = probeDate.toLocaleDateString('en-US', { timeZone: timezone, weekday: 'short' });
+    if (weekday === 'Sat' || weekday === 'Sun') continue;
 
     // Flat-minute loop: stop before a slot would run past slotEndHour
     for (let min = startMinutes; min + slotDurationMin <= endMinutes; min += stride) {
-      const slotTime = new Date(day);
-      slotTime.setHours(Math.floor(min / 60), min % 60, 0, 0);
-      // Only offer slots that are at least 2 hours away (allows same-day booking)
+      const h = Math.floor(min / 60);
+      const m = min % 60;
+
+      // Build the correct UTC instant for h:m in the booking timezone.
+      //
+      // Step 1: Construct a "proxy UTC" Date by treating the local clock time
+      //         as if it were UTC (e.g. 16:00 local → 16:00Z).
+      const hStr  = String(h).padStart(2, '0');
+      const mStr  = String(m).padStart(2, '0');
+      const proxyUtc = new Date(`${dateStr}T${hStr}:${mStr}:00Z`);
+
+      // Step 2: Find the timezone's actual UTC offset at that proxy moment.
+      //         Then subtract it to get the real UTC instant.
+      //         Example for Africa/Nairobi (UTC+3):
+      //           proxyUtc = 16:00Z, offset = +3h  →  slotTime = 13:00Z (= 16:00 EAT) ✓
+      const offsetMs = getTzOffsetMs(timezone, proxyUtc);
+      const slotTime = new Date(proxyUtc.getTime() - offsetMs);
+
+      // Only offer slots that are at least 2 hours away (same-day booking allowed)
       if (slotTime.getTime() - now.getTime() >= TWO_HOURS_MS) {
         slots.push(slotTime);
       }
