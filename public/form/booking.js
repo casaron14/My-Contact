@@ -4,15 +4,29 @@
 (function() {
     'use strict';
 
+    // When the page is opened through VS Code Live Server (or any other static
+    // file server that is NOT the API server), API calls would 404 because
+    // they would go to the wrong port. Detect this and point to the real
+    // local dev-server instead. In production the page and API are on the
+    // same origin, so API_BASE stays empty (relative URLs).
+    const _isLocalStaticServer = (
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
+        window.location.port !== '3000' &&
+        window.location.port !== '' &&        // '' means port 80/443 i.e. production
+        window.location.protocol !== 'https:'
+    );
+    const API_BASE = _isLocalStaticServer ? 'http://localhost:3000' : '';
+
     // Configuration
     const CONFIG = {
-        SLOT_START_HOUR: 16,      // 4 PM
-        SLOT_END_HOUR: 21,        // 8 PM (21:00)
-        SLOT_DURATION_MIN: 30,
-        DAYS_AVAILABLE: 3,
-        API_ENDPOINT: '/api/submit',
-        SLOTS_API_ENDPOINT: '/api/get-slots',
-        DEBUG: true
+        SLOT_START_HOUR: 16,       // 4 PM
+        SLOT_END_HOUR: 18,         // 6 PM
+        SLOT_DURATION_MIN: 25,     // 25-minute sessions
+        SLOT_BREAK_MIN: 5,         // 5-minute break between sessions
+        DAYS_AVAILABLE: 7,         // look-ahead window (guarantees weekday slots are always shown)
+        API_ENDPOINT: API_BASE + '/api/submit',
+        SLOTS_API_ENDPOINT: API_BASE + '/api/get-slots',
+        DEBUG: false               // set true only when actively debugging
     };
 
     // DOM elements
@@ -81,7 +95,9 @@
     }
 
     /**
-     * Generate available time slots locally (fallback method)
+     * Generate all slots locally (fallback / dev mode).
+     * Returns {dateTime: Date, available: boolean}[] — mirrors the API shape.
+     * All slots are marked available here since we have no booking data locally.
      */
     function generateAvailableSlotsLocally() {
         try {
@@ -89,23 +105,32 @@
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            for (let dayOffset = 1; dayOffset <= CONFIG.DAYS_AVAILABLE; dayOffset++) {
+            const stride = CONFIG.SLOT_DURATION_MIN + CONFIG.SLOT_BREAK_MIN; // 30 min
+            const startMinutes = CONFIG.SLOT_START_HOUR * 60;
+            const endMinutes   = CONFIG.SLOT_END_HOUR   * 60;
+            const now = new Date();
+            const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+            // Start from today (dayOffset=0) to allow same-day bookings
+            for (let dayOffset = 0; dayOffset <= CONFIG.DAYS_AVAILABLE; dayOffset++) {
                 const day = new Date(today);
                 day.setDate(day.getDate() + dayOffset);
 
-                for (let hour = CONFIG.SLOT_START_HOUR; hour < CONFIG.SLOT_END_HOUR; hour++) {
-                    for (let min = 0; min < 60; min += CONFIG.SLOT_DURATION_MIN) {
-                        const slotTime = new Date(day);
-                        slotTime.setHours(hour, min, 0, 0);
+                // Weekdays only — skip Saturday (6) and Sunday (0)
+                const dow = day.getDay();
+                if (dow === 0 || dow === 6) continue;
 
-                        if (slotTime > new Date()) {
-                            slots.push(slotTime);
-                        }
+                for (let min = startMinutes; min + CONFIG.SLOT_DURATION_MIN <= endMinutes; min += stride) {
+                    const slotTime = new Date(day);
+                    slotTime.setHours(Math.floor(min / 60), min % 60, 0, 0);
+                    // Only show slots that are at least 2 hours away (matches server logic)
+                    if (slotTime.getTime() - now.getTime() >= TWO_HOURS_MS) {
+                        slots.push({ dateTime: slotTime, available: true });
                     }
                 }
             }
 
-            log(`Generated ${slots.length} available slots locally`);
+            log(`Generated ${slots.length} slots locally`);
             return slots;
         } catch (error) {
             logError(`Local slot generation failed: ${error.message}`);
@@ -114,17 +139,17 @@
     }
 
     /**
-     * Fetch available slots from the API (checks calendar for conflicts)
+     * Fetch ALL slots from the API — both available and booked.
+     * Returns {dateTime: Date, available: boolean}[] so the UI can render
+     * booked slots as visually distinct disabled buttons.
      */
-    async function fetchAvailableSlots() {
+    async function fetchSlots() {
         try {
-            log('Fetching available slots from calendar API...');
-            
+            log('Fetching slots from API...');
+
             const response = await fetch(CONFIG.SLOTS_API_ENDPOINT, {
                 method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                },
+                headers: { 'Accept': 'application/json' },
             });
 
             if (!response.ok) {
@@ -132,23 +157,26 @@
             }
 
             const data = await response.json();
-            
+
             if (!data.ok || !data.slots) {
                 throw new Error('Invalid API response format');
             }
 
-            // Filter to only available slots and convert to Date objects
-            const availableSlots = data.slots
-                .filter(slot => slot.available)
-                .map(slot => new Date(slot.dateTime))
-                .filter(date => date > new Date()); // Ensure slot is in the future
+            const now = new Date();
+            const slots = data.slots
+                .filter(slot => new Date(slot.dateTime) > now)
+                .map(slot => ({
+                    dateTime: new Date(slot.dateTime),
+                    available: slot.available,
+                }));
 
-            log(`Fetched ${availableSlots.length} available slots from calendar (${data.meta.bookedSlots} slots are booked)`);
-            
-            return availableSlots;
+            const booked    = slots.filter(s => !s.available).length;
+            const available = slots.filter(s =>  s.available).length;
+            log(`Fetched ${slots.length} slots (${available} available, ${booked} booked)`);
+
+            return slots;
         } catch (error) {
-            logError(`❌ CRITICAL: Failed to fetch slots from calendar API: ${error.message}`);
-            // Don't fall back - throw error to show user the real problem
+            logError(`Failed to fetch slots: ${error.message}`);
             throw error;
         }
     }
@@ -174,7 +202,10 @@
     }
 
     /**
-     * Render available slots (async to fetch from API)
+     * Render slots (async — fetches from API).
+     * Available slots → clickable buttons.
+     * Booked slots    → disabled buttons with a "Booked" label so users can
+     *                   see that the slot exists but is already taken.
      */
     async function renderSlots() {
         try {
@@ -183,42 +214,33 @@
                 return;
             }
 
-            // Show loading state
             DOM.slotsContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #666;">🔄 Loading available slots...</p>';
 
-            let slots;
+            let slots; // {dateTime: Date, available: boolean}[]
             try {
-                slots = await fetchAvailableSlots();
+                slots = await fetchSlots();
             } catch (error) {
-                // Show visible error to user instead of silent fallback
                 DOM.slotsContainer.innerHTML = `
                     <div style="grid-column: 1/-1; padding: 20px; background: #fee; border: 2px solid #c33; border-radius: 8px; color: #c33;">
-                        <h3 style="margin: 0 0 10px 0; color: #c33;">❌ Unable to Load Calendar</h3>
+                        <h3 style="margin: 0 0 10px 0; color: #c33;">❌ Unable to Load Slots</h3>
                         <p style="margin: 0 0 10px 0;"><strong>Error:</strong> ${error.message}</p>
-                        <p style="margin: 0; font-size: 14px;">Please check:</p>
-                        <ul style="margin: 10px 0 0 20px; font-size: 14px;">
-                            <li>Calendar API credentials are configured</li>
-                            <li>Service account has access to the calendar</li>
-                            <li>Calendar ID is correct in environment variables</li>
-                        </ul>
+                        <p style="margin: 0; font-size: 14px;">Please check the server configuration or try again later.</p>
                         <p style="margin: 10px 0 0 0; font-size: 12px; opacity: 0.8;">Check browser console for details.</p>
                     </div>
                 `;
                 return;
             }
-            
+
             if (slots.length === 0) {
-                DOM.slotsContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">No available slots at the moment. All slots are currently booked.</p>';
+                DOM.slotsContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">No upcoming slots available. Please check back later.</p>';
                 return;
             }
 
+            // Group slots by calendar day
             const slotsByDay = {};
-
             slots.forEach(slot => {
-                const dayKey = slot.toDateString();
-                if (!slotsByDay[dayKey]) {
-                    slotsByDay[dayKey] = [];
-                }
+                const dayKey = slot.dateTime.toDateString();
+                if (!slotsByDay[dayKey]) slotsByDay[dayKey] = [];
                 slotsByDay[dayKey].push(slot);
             });
 
@@ -227,8 +249,7 @@
             Object.entries(slotsByDay).forEach(([dayKey, daySlots]) => {
                 const sectionTitle = document.createElement('div');
                 sectionTitle.className = 'slots-day-title';
-                const sample = new Date(dayKey);
-                sectionTitle.textContent = formatSlotDisplay(sample).dayLabel;
+                sectionTitle.textContent = formatSlotDisplay(new Date(dayKey)).dayLabel;
                 DOM.slotsContainer.appendChild(sectionTitle);
 
                 const slotsGrid = document.createElement('div');
@@ -236,12 +257,24 @@
 
                 daySlots.forEach(slot => {
                     const button = document.createElement('button');
-                    button.className = 'slot-button';
                     button.type = 'button';
-                    const { timeStr } = formatSlotDisplay(slot);
-                    button.textContent = timeStr;
-                    button.dataset.slotTime = slot.toISOString();
-                    button.onclick = (e) => selectSlot(e, slot, button);
+                    const { timeStr } = formatSlotDisplay(slot.dateTime);
+
+                    if (slot.available) {
+                        button.className = 'slot-button';
+                        button.innerHTML = `<span class="slot-time">${timeStr}</span>`;
+                        button.dataset.slotTime = slot.dateTime.toISOString();
+                        button.onclick = (e) => selectSlot(e, slot.dateTime, button);
+                    } else {
+                        button.className = 'slot-button slot-booked';
+                        button.disabled = true;
+                        button.setAttribute('aria-label', `${timeStr} — already booked`);
+                        button.innerHTML = `
+                            <span class="slot-time">${timeStr}</span>
+                            <span class="slot-status-label">Booked</span>
+                        `;
+                    }
+
                     slotsGrid.appendChild(button);
                 });
 
@@ -429,64 +462,51 @@
 
             log('Submitting form...');
 
-            let result;
+            const response = await fetch(CONFIG.API_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fullName: formData.fullName,
+                    email: formData.email,
+                    phone: formData.phone,
+                    intent: formData.intent,
+                    slotDateTime: selectedSlot.toISOString()
+                })
+            });
 
-            if (isDevelopment()) {
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                result = {
-                    ok: true,
-                    success: true,
-                    message: 'Booking confirmed! (Dev Mode)',
-                    bookingId: 'dev-' + Date.now()
-                };
-                log('Dev mode: Mock response generated');
-            } else {
-                const response = await fetch(CONFIG.API_ENDPOINT, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fullName: formData.fullName,
-                        email: formData.email,
-                        phone: formData.phone,
-                        intent: formData.intent,
-                        slotDateTime: selectedSlot.toISOString()
-                    })
-                });
+            log(`API response: ${response.status} ${response.statusText}`);
 
-                log(`API response: ${response.status} ${response.statusText}`);
+            // Check if response is JSON before parsing
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                logError(`Non-JSON response received: ${text.substring(0, 200)}`);
 
-                // Check if response is JSON before parsing
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    // Server returned non-JSON response (likely an error page)
-                    const text = await response.text();
-                    logError(`Non-JSON response received: ${text.substring(0, 100)}`);
-                    
-                    if (response.status === 403) {
-                        throw new Error('Access forbidden. Please ensure you are accessing from the correct domain.');
-                    } else if (response.status === 429) {
-                        throw new Error('Too many requests. Please wait a few minutes and try again.');
-                    } else if (response.status >= 500) {
-                        throw new Error('Server error. Please try again in a few moments.');
-                    } else {
-                        throw new Error(`Server returned an error (${response.status}). Please try again.`);
-                    }
-                }
-
-                result = await response.json();
-                
-                // Log the full response for debugging
-                log('API response data: ' + JSON.stringify(result));
-
-                if (!response.ok) {
-                    // Use the detailed error message from API if available
-                    const errorMsg = result.message || result.error || `Request failed (${response.status})`;
-                    throw new Error(errorMsg);
+                if (response.status === 403) {
+                    throw new Error('Access forbidden. Please check you are using the correct URL.');
+                } else if (response.status === 429) {
+                    throw new Error('Too many requests. Please wait a few minutes and try again.');
+                } else if (response.status >= 500) {
+                    throw new Error('Server error. Please try again in a few moments.');
+                } else {
+                    throw new Error(`Unexpected server response (${response.status}). Please try again.`);
                 }
             }
 
-            if (!result.ok && !result.success) {
-                throw new Error(result.error || 'Booking submission failed');
+            const result = await response.json();
+            log('API response: ' + JSON.stringify(result));
+
+            if (!response.ok) {
+                // Slot was taken between the user selecting it and submitting the form.
+                // Go back to the slot picker with a refreshed view so the user can
+                // immediately pick a different available slot.
+                if (response.status === 409 && result.slotTaken) {
+                    alert('That time slot was just taken. Please choose a different slot.');
+                    goBackToSlots();
+                    renderSlots(); // async refresh — booked slot will now show as disabled
+                    return;
+                }
+                throw new Error(result.message || result.error || `Request failed (${response.status})`);
             }
 
             log('Booking successful!');
@@ -521,7 +541,7 @@ Phone: ${formData.phone}
 Goal: ${formData.intent === 'safe_start' ? 'Want to start investing safely' : formData.intent === 'education' ? 'Want structured crypto education' : 'Need better investment strategy'}
 
 Access: Video call link will be sent via email
-Duration: 30 minutes
+Duration: 25 minutes
 
 Confirmation email sent to: ${formData.email}
 `.trim();
@@ -579,9 +599,9 @@ DTSTAMP:${formatICalDate(new Date())}
 DTSTART:${formatICalDate(startTime)}
 DTEND:${formatICalDate(endTime)}
 SUMMARY:Crypto Investment Strategy Consultation
-DESCRIPTION:Name: ${formData.fullName}\\nEmail: ${formData.email}\\nPhone: ${formData.phone}\\nGoal: ${formData.intent}\\n\\nAccess: Video call link will be sent via email\\nDuration: 30 minutes
+DESCRIPTION:Name: ${formData.fullName}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nGoal: ${formData.intent}\n\nAccess: Video call link will be sent via email\nDuration: 25 minutes
 LOCATION:Video Call - Link sent via email
-ORGANIZER:mailto:charity@example.com
+ORGANIZER:mailto:casaron14@gmail.com
 ATTENDEE:mailto:${formData.email}
 STATUS:CONFIRMED
 SEQUENCE:0
@@ -616,7 +636,6 @@ END:VCALENDAR`;
             if (DOM.formSection) DOM.formSection.style.display = 'none';
 
             const { dayLabel, timeStr } = formatSlotDisplay(slotDateTime);
-            const devMode = isDevelopment() ? '<p class="dev-note">💡 Development mode - mock booking</p>' : '';
             
             // Use server's calendar link if available, otherwise generate client-side
             const useServerCalendar = apiResult && apiResult.eventLink && apiResult.eventLink !== '#';
@@ -663,7 +682,6 @@ END:VCALENDAR`;
                         </div>
                     </div>
 
-                    ${devMode}
                     <p class="confirmation-note">We'll send you a confirmation email shortly. Please check your inbox.</p>
                 </div>
             `;
@@ -681,14 +699,6 @@ END:VCALENDAR`;
         } catch (error) {
             logError(`showConfirmation error: ${error.message}`);
         }
-    }
-
-    /**
-     * Check if development mode
-     */
-    function isDevelopment() {
-        return window.location.hostname === 'localhost' || 
-               window.location.hostname === '127.0.0.1';
     }
 
     /**
@@ -722,29 +732,6 @@ END:VCALENDAR`;
 
             if (DOM.bookingForm) {
                 DOM.bookingForm.addEventListener('submit', handleFormSubmit);
-            }
-
-            // Show dev mode indicator if applicable
-            if (isDevelopment()) {
-                console.log('%c🔧 DEVELOPMENT MODE 🔧', 'background: #FFA500; color: white; padding: 5px 10px; font-weight: bold; border-radius: 3px;');
-                console.log('%cUsing MOCK API responses', 'color: #FFA500; font-weight: bold;');
-                
-                const devBadge = document.createElement('div');
-                devBadge.innerHTML = '🔧 TEST MODE (Mock API)';
-                devBadge.style.cssText = `
-                    position: fixed;
-                    top: 10px;
-                    right: 10px;
-                    background: #FFA500;
-                    color: white;
-                    padding: 8px 12px;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    font-weight: bold;
-                    z-index: 10000;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                `;
-                document.body.appendChild(devBadge);
             }
 
             // Page fade-in animation

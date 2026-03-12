@@ -35,8 +35,8 @@ const { createSecurityMiddleware, handleApiError, logger } = require('../lib/mid
 const { getAvailableSlots } = require('./book-slot');
 const config = require('../config');
 
-// Initialize security middleware
-const securityMiddleware = createSecurityMiddleware();
+// Initialize security middleware — read-only, high rate limit
+const securityMiddleware = createSecurityMiddleware({ readOnly: true });
 
 /**
  * Main handler for get-slots endpoint
@@ -94,6 +94,7 @@ async function handler(req, res) {
         slotStartHour: config.booking.slotStartHour,
         slotEndHour: config.booking.slotEndHour,
         slotDurationMin: config.booking.slotDurationMin,
+        slotBreakMin: config.booking.slotBreakMin,
         daysAvailable: config.booking.daysAvailable,
         timezone: config.app.timezone,
       },

@@ -7,7 +7,7 @@
 const CONFIG = {
     contact: {
         email: 'casaron14@gmail.com',
-        whatsapp: 'https://wa.me/254708066816',
+        whatsapp: 'https://wa.me/255621745217',
         instagram: 'https://instagram.com/charityaron',
         twitter: 'https://twitter.com/charityaron'
     },

@@ -1,3 +1,11 @@
 {
-  "version": 2
+  "version": 2,
+  "routes": [
+    { "src": "/api/get-slots",      "dest": "/api/get-slots.js" },
+    { "src": "/api/submit",         "dest": "/api/submit.js" },
+    { "src": "/api/admin/auth",     "dest": "/api/admin/auth.js" },
+    { "src": "/api/admin/stats",    "dest": "/api/admin/stats.js" },
+    { "src": "/api/admin/bookings", "dest": "/api/admin/bookings.js" },
+    { "src": "/(.*)",               "dest": "/public/$1" }
+  ]
 }

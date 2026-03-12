@@ -103,6 +103,17 @@ const config = {
     sheetName: getEnv('GOOGLE_SHEET_NAME', 'Bookings'),
   },
 
+  // ========== SLOT PROVIDER ==========
+  // Controls where booked slots are stored for availability checking.
+  // 'database' = Supabase (recommended)  |  'calendar' = Google Calendar (legacy)
+  slotProvider: getEnv('SLOT_PROVIDER', 'database'),
+
+  // ========== SUPABASE (used when SLOT_PROVIDER=database) ==========
+  supabase: {
+    url: getEnv('SUPABASE_URL'),
+    serviceRoleKey: getEnv('SUPABASE_SERVICE_ROLE_KEY'),
+  },
+
   // ========== TELEGRAM NOTIFICATIONS ==========
   telegram: {
     botToken: getEnv('TG_BOT_TOKEN', undefined, isProduction),
@@ -118,11 +129,13 @@ const config = {
   },
 
   // ========== BOOKING CONFIGURATION ==========
+  // Sessions: Mon–Fri, 4:00 PM – 6:00 PM, 25-min slots with 5-min breaks
   booking: {
-    slotStartHour: parseInteger(getEnv('BOOKING_SLOT_START_HOUR'), 16),
-    slotEndHour: parseInteger(getEnv('BOOKING_SLOT_END_HOUR'), 21),
-    slotDurationMin: parseInteger(getEnv('BOOKING_SLOT_DURATION_MIN'), 30),
-    daysAvailable: parseInteger(getEnv('BOOKING_DAYS_AVAILABLE'), 3),
+    slotStartHour: parseInteger(getEnv('BOOKING_SLOT_START_HOUR'), 16),   // 4 PM
+    slotEndHour: parseInteger(getEnv('BOOKING_SLOT_END_HOUR'), 18),       // 6 PM
+    slotDurationMin: parseInteger(getEnv('BOOKING_SLOT_DURATION_MIN'), 25), // 25-min session
+    slotBreakMin: parseInteger(getEnv('BOOKING_SLOT_BREAK_MIN'), 5),        // 5-min break
+    daysAvailable: parseInteger(getEnv('BOOKING_DAYS_AVAILABLE'), 7),       // look 7 days ahead to always find weekday slots
   },
 
   // ========== API SECURITY ==========
@@ -169,6 +182,16 @@ function validateConfig() {
     }
     if (!config.telegram.chatId) {
       errors.push('TG_CHAT_ID is required in production');
+    }
+
+    // Validate slot provider credentials
+    if (config.slotProvider === 'database') {
+      if (!config.supabase.url) errors.push('SUPABASE_URL is required in production when SLOT_PROVIDER=database');
+      if (!config.supabase.serviceRoleKey) errors.push('SUPABASE_SERVICE_ROLE_KEY is required in production when SLOT_PROVIDER=database');
+    } else if (config.slotProvider === 'calendar') {
+      if (!config.google.calendarId || config.google.calendarId === 'primary') {
+        errors.push('GOOGLE_CALENDAR_ID must be set to a specific calendar ID when SLOT_PROVIDER=calendar');
+      }
     }
   }
 

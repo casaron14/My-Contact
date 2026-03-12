@@ -27,7 +27,7 @@
 const config = require('../config');
 const { createDataProvider } = require('../lib/providers/DataProvider');
 const { createNotificationProvider } = require('../lib/providers/NotificationProvider');
-const { createCalendarEvent } = require('./book-slot');
+const { recordBookedSlot, checkSlotAvailability } = require('./book-slot');
 const {
   validateBookingInput,
   sanitizeInput,
@@ -87,6 +87,26 @@ async function handler(req, res) {
 
     const sanitizedData = validation.data;
 
+    // ==================== SLOT AVAILABILITY CHECK ====================
+    // Fast DB read — fails before any writes if the slot is already taken.
+    const isSlotAvailable = await checkSlotAvailability(sanitizedData.slotDateTime);
+    if (!isSlotAvailable) {
+      return res.status(409).json({
+        ok: false,
+        slotTaken: true,
+        error: 'This time slot is no longer available. Please choose another.',
+      });
+    }
+
+    // Enforce 2-hour advance booking rule (server-side guard)
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+    if (new Date(sanitizedData.slotDateTime).getTime() - Date.now() < TWO_HOURS_MS) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Slots must be booked at least 2 hours in advance.',
+      });
+    }
+
     // ==================== DUPLICATE CHECK ====================
 
     const existingBooking = await dataProvider.findBookingByEmail(sanitizedData.email);
@@ -122,30 +142,30 @@ async function handler(req, res) {
 
     logger.info('✅ Booking created', { bookingId, email: sanitizedData.email });
 
-    // ==================== CREATE GOOGLE CALENDAR EVENT ====================
+    // ==================== RESERVE SLOT IN DATABASE ====================
 
-    // Create calendar event (non-blocking - booking succeeds even if this fails)
-    let calendarResult = { eventId: null, eventLink: null };
+    // Mark the slot as taken in the database so it no longer appears available.
+    // Non-blocking: a failure here does NOT cancel the Sheets booking.
+    let slotResult = { slotId: null, eventLink: null };
     try {
-      logger.info('📅 Creating Google Calendar event...');
-      calendarResult = await createCalendarEvent(bookingData);
-      
-      if (calendarResult.eventId) {
-        logger.info('✅ Calendar event created', { 
-          eventId: calendarResult.eventId,
-          bookingId 
-        });
+      slotResult = await recordBookedSlot(bookingData, bookingId);
+
+      if (slotResult.slotId) {
+        logger.info('✅ Slot reserved in DB', { slotId: slotResult.slotId, bookingId });
       } else {
-        logger.warn('⚠️  Calendar event not created', { 
-          reason: calendarResult.error || 'Unknown',
-          bookingId 
+        logger.warn('⚠️  Slot not reserved', {
+          reason: slotResult.error || 'Unknown',
+          bookingId,
         });
       }
-    } catch (calendarError) {
-      // Don't fail the booking if calendar fails
-      logger.warn('⚠️  Calendar creation failed (non-blocking)', { 
-        error: calendarError.message,
-        bookingId 
+    } catch (slotError) {
+      // Re-throw 409 (slot taken) — this is a meaningful user-facing error
+      if (slotError.statusCode === 409) throw slotError;
+
+      // All other slot errors are non-blocking
+      logger.warn('⚠️  Slot reservation failed (non-blocking)', {
+        error: slotError.message,
+        bookingId,
       });
     }
 
@@ -174,9 +194,8 @@ async function handler(req, res) {
       message: 'Booking confirmed successfully!',
       bookedTime: sanitizedData.slotDateTime,
       clientEmail: sanitizedData.email,
-      eventId: calendarResult.eventId,
-      eventLink: calendarResult.eventLink,
-      calendarCreated: !!calendarResult.eventId,
+      slotId: slotResult.slotId,
+      eventLink: slotResult.eventLink,
     });
 
   } catch (error) {

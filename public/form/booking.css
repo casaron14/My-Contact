@@ -562,6 +562,40 @@ body {
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
+/* Booked slot — visually distinct: muted red tint, not clickable */
+.slot-button.slot-booked {
+    background: #fef2f2;
+    color: #9ca3af;
+    border-color: #fca5a5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none;
+    opacity: 0.75;
+}
+
+.slot-button.slot-booked:hover {
+    background: #fef2f2;
+    color: #9ca3af;
+    border-color: #fca5a5;
+    transform: none;
+    box-shadow: none;
+}
+
+.slot-time {
+    display: block;
+    font-weight: 600;
+}
+
+.slot-status-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+    color: #ef4444;
+}
+
 /* ==================== CONFIRMATION SECTION ==================== */
 .confirmation-section {
     background: var(--background-white);
