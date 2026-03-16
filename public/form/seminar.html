@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Register your interest in upcoming blockchain and cryptocurrency seminars by Charity Aron.">
+    <title>Upcoming Seminars | Charity Aron</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="seminar.css">
+</head>
+<body>
+    <div class="page-bg">
+        <div class="wrapper">
+
+            <!-- ==================== SEMINAR BANNER IMAGE ==================
+                 SWAP THE IMAGE FOR EACH SEMINAR:
+                   • Drop an image file named seminar-banner.jpeg into public/form/
+                   • Or point src to a full URL (e.g. from Google Drive / Cloudinary)
+
+                 RECOMMENDED SIZE:
+                   • Mobile / Instagram portrait  →  1080 × 1350 px  (4:5 ratio)
+                   • Square Instagram post        →  1080 × 1080 px  (1:1 ratio)
+                   • Landscape                    →  1200 × 630 px
+
+                 The image fills the full width of the phone screen edge-to-edge.
+            ================================================== -->
+            <div class="seminar-banner">
+                <img
+                    id="seminarBannerImg"
+                    src="seminar-banner.jpeg"
+                    alt="Upcoming Blockchain &amp; Crypto Seminar"
+                    class="banner-img"
+                    onerror="this.parentElement.style.display='none'"
+                >
+            </div>
+
+            <div class="card">
+
+                <!-- ==================== HEADER ==================== -->
+                <header class="form-header">
+                    <div class="brand-tag">Charity Aron · Official Event</div>
+                    <h1 class="form-title">Secure Your Spot</h1>
+                    <p class="form-subtitle">
+                        Join our upcoming <strong>Blockchain &amp; Crypto Education Seminar</strong>.
+                        Fill in your details and we'll contact you with full event details.
+                    </p>
+                </header>
+
+                <!-- ==================== REGISTRATION FORM ==================== -->
+                <form id="seminarForm" class="seminar-form" novalidate>
+
+                    <!-- Full Name (required) -->
+                    <div class="form-group">
+                        <label class="form-label" for="name">Full Name</label>
+                        <input
+                            type="text"
+                            id="name"
+                            name="name"
+                            class="form-input"
+                            placeholder="e.g. Charity Aron"
+                            autocomplete="name"
+                            required
+                            maxlength="100"
+                        >
+                        <div class="field-error" id="name-error" role="alert" aria-live="polite"></div>
+                    </div>
+
+                    <!-- Email (required) -->
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email Address</label>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            class="form-input"
+                            placeholder="you@example.com"
+                            autocomplete="email"
+                            required
+                            maxlength="254"
+                        >
+                        <div class="field-error" id="email-error" role="alert" aria-live="polite"></div>
+                    </div>
+
+                    <!-- Phone (required) -->
+                    <div class="form-group">
+                        <label class="form-label" for="phone">WhatsApp Number</label>
+                        <input
+                            type="tel"
+                            id="phone"
+                            name="phone"
+                            class="form-input"
+                            placeholder="+255 700 000 000"
+                            autocomplete="tel"
+                            required
+                        >
+                        <div class="field-error" id="phone-error" role="alert" aria-live="polite"></div>
+                        <p class="field-hint">Include your country code e.g. +255 (Tanzania) or +27 (South Africa)</p>
+                    </div>
+
+                    <!-- Location (required) -->
+                    <div class="form-group">
+                        <label class="form-label" for="location">Your City &amp; Country</label>
+                        <input
+                            type="text"
+                            id="location"
+                            name="location"
+                            class="form-input"
+                            placeholder="e.g. Arusha, Tanzania"
+                            required
+                            maxlength="120"
+                        >
+                        <div class="field-error" id="location-error" role="alert" aria-live="polite"></div>
+                        <p class="field-hint">We'll notify you when a seminar is scheduled near you</p>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="submitBtn" class="submit-btn">
+                        <span id="btnText">Register Now</span>
+                        <span id="btnSpinner" class="spinner hidden" aria-hidden="true"></span>
+                    </button>
+
+                    <p class="privacy-note">
+                        🔒 Your details are kept private and will <strong>never</strong> be shared.
+                    </p>
+
+                </form>
+
+                <!-- ==================== SUCCESS STATE ==================== -->
+                <div id="successState" class="state-block hidden" role="status" aria-live="polite">
+                    <div class="state-icon">🎉</div>
+                    <h2 class="state-title">You're registered!</h2>
+                    <p class="state-message">
+                        Thank you! We'll send you the seminar details directly to your phone and email.
+                    </p>
+                    <p class="state-sub">Know someone who'd benefit? Share this page with them.</p>
+                </div>
+
+                <!-- ==================== ERROR STATE ==================== -->
+                <div id="errorState" class="state-block hidden" role="alert" aria-live="assertive">
+                    <div class="state-icon">⚠️</div>
+                    <h2 class="state-title">Something went wrong</h2>
+                    <p id="errorMessage" class="state-message">Please try again in a moment.</p>
+                    <button id="retryBtn" class="submit-btn retry-btn">Try Again</button>
+                </div>
+
+            </div><!-- /card -->
+        </div><!-- /wrapper -->
+    </div><!-- /page-bg -->
+
+    <script src="seminar.js"></script>
+</body>
+</html>

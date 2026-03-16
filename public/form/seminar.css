@@ -1,0 +1,435 @@
+/* ==================== GOOGLE FONT ==================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ==================== ROOT VARIABLES ==================== */
+:root {
+    --gold:         #f5c842;
+    --gold-dark:    #d4a800;
+    --navy:         #0d1b2e;
+    --navy-mid:     #142236;
+    --navy-light:   #1e3a5f;
+    --accent:       #2979ff;
+    --accent-hover: #1565e0;
+    --text:         #f0f6ff;
+    --text-light:   rgba(180,215,255,0.72);
+    --card-bg:      #0d1f3d;
+    --input-bg:     #081422;
+    --border:       rgba(255,255,255,0.15);
+    --border-focus: #f5c842;
+    --error:        #ff6b6b;
+    --error-bg:     rgba(211,47,47,0.2);
+    --radius-card:  16px;
+    --radius-input: 10px;
+    --shadow-card:  0 8px 40px rgba(0, 0, 0, 0.5);
+    --font:         'Inter', 'Segoe UI', Arial, sans-serif;
+}
+
+/* ==================== RESET ==================== */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+}
+
+/* ==================== PAGE BACKGROUND ==================== */
+.page-bg {
+    min-height: 100vh;
+    background: linear-gradient(160deg, #0a1628 0%, #0d2245 50%, #0a1628 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem 1.5rem;
+}
+
+body {
+    font-family: var(--font);
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--text);
+    background: #0a1628;
+    overflow-x: hidden;
+}
+
+/* ==================== WRAPPER ==================== */
+.wrapper {
+    width: 100%;
+    max-width: 1100px;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    animation: fadeUp 0.55s ease-out;
+}
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ==================== SEMINAR BANNER IMAGE ==================== */
+.seminar-banner {
+    width: 50%;
+    flex-shrink: 0;
+    border-radius: var(--radius-card) 0 0 var(--radius-card);
+    overflow: hidden;
+    /* Height is driven by the card beside it — no fixed aspect ratio needed */
+    aspect-ratio: unset;
+    min-height: 520px;
+    background: var(--navy-mid);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* Gradient overlay fading right edge of image → card colour */
+.seminar-banner::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 90px;
+    background: linear-gradient(
+        to right,
+        rgba(13, 31, 61, 0) 0%,
+        rgba(13, 31, 61, 1) 100%
+    );
+    pointer-events: none;
+    z-index: 1;
+}
+
+.banner-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top; /* keep faces / top of image in frame */
+    display: block;
+}
+
+/* ==================== CARD ==================== */
+.card {
+    flex: 1;
+    background: var(--card-bg);
+    border-radius: 0 var(--radius-card) var(--radius-card) 0;
+    padding: 2.25rem 2rem 2.5rem;
+    box-shadow: var(--shadow-card);
+    position: relative;
+    z-index: 2;
+    overflow-y: auto;
+}
+
+/* When no banner image, round all corners */
+.seminar-banner[style*="none"] + .card,
+.seminar-banner:empty + .card {
+    border-radius: var(--radius-card);
+}
+
+/* ==================== HEADER ==================== */
+.form-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.brand-tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(245,200,66,0.35);
+    border-radius: 20px;
+    padding: 0.25rem 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.form-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 0.65rem;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+.form-subtitle {
+    font-size: 1.05rem;
+    color: var(--text-light);
+    max-width: 440px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+.form-subtitle strong {
+    color: #ffffff;
+}
+
+/* ==================== FORM ==================== */
+.seminar-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.form-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f0f6ff;
+    letter-spacing: 0.01em;
+}
+
+/* ==================== INPUTS ==================== */
+.form-input {
+    width: 100%;
+    padding: 0.95rem 1.1rem;
+    font-size: 1.05rem;
+    font-family: var(--font);
+    font-weight: 500;
+    color: var(--text);
+    background: var(--input-bg);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-input);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    -webkit-appearance: none;
+    /* Prevent iOS zooming on focus — font-size must be >= 16px */
+    font-size: max(16px, 1.05rem);
+}
+
+.form-input::placeholder {
+    color: rgba(255,255,255,0.35);
+    font-weight: 400;
+}
+
+.form-input:focus {
+    border-color: var(--border-focus);
+    background: #0f2548;
+    box-shadow: 0 0 0 3px rgba(245,200,66,0.22);
+}
+
+.form-input.input-invalid {
+    border-color: var(--error);
+    background: var(--error-bg);
+}
+
+.form-input.input-invalid:focus {
+    box-shadow: 0 0 0 4px rgba(211, 47, 47, 0.12);
+}
+
+/* ==================== FIELD HINTS & ERRORS ==================== */
+.field-hint {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.field-error {
+    font-size: 0.88rem;
+    color: var(--error);
+    font-weight: 600;
+    display: none;
+}
+
+/* ==================== SUBMIT BUTTON ==================== */
+.submit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 1.05rem 1.5rem;
+    margin-top: 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 800;
+    font-family: var(--font);
+    letter-spacing: 0.02em;
+    color: var(--navy);
+    background: var(--gold);
+    border: none;
+    border-radius: var(--radius-input);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 4px 18px rgba(245, 200, 66, 0.35);
+}
+
+.submit-btn:hover:not(:disabled) {
+    background: var(--gold-dark);
+    box-shadow: 0 6px 22px rgba(212, 168, 0, 0.4);
+    transform: translateY(-2px);
+}
+
+.submit-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.retry-btn {
+    margin-top: 1rem;
+    max-width: 220px;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 1rem;
+}
+
+/* ==================== SPINNER ==================== */
+.spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 3px solid rgba(13, 27, 46, 0.25);
+    border-top-color: var(--navy);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ==================== PRIVACY NOTE ==================== */
+.privacy-note {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    text-align: center;
+    margin-top: 1rem;
+    line-height: 1.55;
+}
+
+.privacy-note strong {
+    color: rgba(255,255,255,0.9);
+}
+
+/* ==================== STATE BLOCKS (SUCCESS / ERROR) ==================== */
+.state-block {
+    text-align: center;
+    padding: 2rem 0.5rem;
+    animation: fadeUp 0.4s ease-out;
+}
+
+.state-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+    display: block;
+    line-height: 1;
+}
+
+.state-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.01em;
+}
+
+.state-message {
+    font-size: 1.05rem;
+    color: var(--text-light);
+    margin-bottom: 0.6rem;
+    line-height: 1.6;
+}
+
+.state-sub {
+    font-size: 0.9rem;
+    color: var(--text-light);
+    font-style: italic;
+}
+
+/* ==================== UTILITY ==================== */
+.hidden {
+    display: none !important;
+}
+
+/* ==================== TABLET: STACK VERTICALLY ==================== */
+@media (max-width: 768px) {
+    .wrapper {
+        flex-direction: column;
+        max-width: 580px;
+    }
+
+    .seminar-banner {
+        width: 100%;
+        border-radius: var(--radius-card) var(--radius-card) 0 0;
+        aspect-ratio: 4 / 5;
+        min-height: unset;
+    }
+
+    .seminar-banner::after {
+        top: unset;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 140px;
+        background: linear-gradient(
+            to bottom,
+            rgba(13, 31, 61, 0) 0%,
+            rgba(13, 31, 61, 0.75) 55%,
+            rgba(13, 31, 61, 1) 100%
+        );
+    }
+
+    .card {
+        border-radius: 0 0 var(--radius-card) var(--radius-card);
+        margin-top: -2px;
+    }
+}
+
+/* ==================== MOBILE OVERRIDES ==================== */
+@media (max-width: 480px) {
+    .page-bg {
+        padding: 0 0 3rem;
+    }
+
+    .wrapper {
+        max-width: 100%;
+    }
+
+    .seminar-banner {
+        border-radius: 0;
+        aspect-ratio: 4 / 5;
+        min-height: unset;
+    }
+
+    .card {
+        border-radius: 0 0 12px 12px;
+        padding: 1.75rem 1.25rem 2rem;
+    }
+
+    .form-title {
+        font-size: 1.7rem;
+    }
+
+    .form-subtitle {
+        font-size: 1rem;
+    }
+
+    .form-input {
+        padding: 0.9rem 1rem;
+    }
+
+    .submit-btn {
+        font-size: 1.1rem;
+        padding: 1rem 1.25rem;
+    }
+}

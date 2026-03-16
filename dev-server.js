@@ -162,7 +162,14 @@ async function handleApi(cleanPath, req, res) {
     return;
   }
 
-  // ΓöÇΓöÇ Admin API routes ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  if (cleanPath === '/api/seminar') {
+    clearModuleCache('./api/seminar');
+    const handler = require('./api/seminar');
+    await handler(req, res);
+    return;
+  }
+
+  // ── Admin API routes ──────────────────────────────────────────
   if (cleanPath === '/api/admin/auth') {
     clearModuleCache('./api/admin/auth');
     const handler = require('./api/admin/auth');

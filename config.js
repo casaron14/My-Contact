@@ -101,6 +101,9 @@ const config = {
     calendarId: getEnv('GOOGLE_CALENDAR_ID', 'primary'), // Calendar ID to use for bookings
     sheetsId: getEnv('GOOGLE_SHEET_ID', undefined, isProduction),
     sheetName: getEnv('GOOGLE_SHEET_NAME', 'Bookings'),
+    // Sheet name for seminar sign-ups. Leave blank (default) to always use
+    // the FIRST sheet of the spreadsheet regardless of its name.
+    seminarSheetName: getEnv('SEMINAR_SHEET_NAME', ''),
   },
 
   // ========== SLOT PROVIDER ==========
@@ -121,6 +124,11 @@ const config = {
     // Dev mode bypasses actual sends
     enabled: !isDevelopment && !!getEnv('TG_BOT_TOKEN'),
   },
+
+  // ========== APPS SCRIPT INTEGRATION ==========
+  // Deploy your code.gs as a Web App and paste the URL here.
+  // Used by /api/seminar to trigger client confirmation emails via MailApp.
+  appsScriptWebhookUrl: getEnv('APPS_SCRIPT_WEBHOOK_URL', ''),
 
   // ========== APPLICATION SETTINGS ==========
   app: {
