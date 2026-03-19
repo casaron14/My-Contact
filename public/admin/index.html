@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard — Charity Aron</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body class="dashboard-page">
+
+  <!-- ── Top Navigation ── -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle menu">☰</button>
+      <span class="topbar-brand">Charity Aron <em>Admin</em></span>
+    </div>
+    <div class="topbar-right">
+      <span class="admin-badge">Admin</span>
+      <button class="btn-ghost" id="logoutBtn">Sign Out</button>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ── Sidebar ── -->
+    <nav class="sidebar" id="sidebar">
+      <ul class="nav-list">
+        <li class="nav-item active" data-section="overview">
+          <span class="nav-icon">📊</span> Overview
+        </li>
+        <li class="nav-item" data-section="bookings">
+          <span class="nav-icon">📅</span> Bookings
+        </li>
+        <li class="nav-item" data-section="assets">
+          <span class="nav-icon">📁</span> File Assets
+        </li>
+      </ul>
+    </nav>
+
+    <!-- ── Main content ── -->
+    <main class="main-content">
+
+      <!-- ══ SECTION: Overview ══ -->
+      <section class="section active" id="section-overview">
+        <div class="section-header">
+          <h2>Overview</h2>
+          <button class="btn-secondary btn-sm" id="refreshBtn">↻ Refresh</button>
+        </div>
+
+        <!-- Stat cards -->
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card skeleton"></div>
+          <div class="stat-card skeleton"></div>
+          <div class="stat-card skeleton"></div>
+          <div class="stat-card skeleton"></div>
+        </div>
+
+        <!-- Today's bookings full table -->
+        <div class="widget mt-16">
+          <h3 class="widget-title">
+            Today's Bookings
+            <span class="badge-count" id="todayCount" style="font-size:12px;vertical-align:middle;margin-left:10px;">—</span>
+          </h3>
+          <div id="todayBookings" class="table-wrap">
+            <div class="skeleton widget-skeleton"></div>
+          </div>
+        </div>
+
+        <!-- Two-column widgets -->
+        <div class="widgets-grid">
+          <!-- Intent breakdown -->
+          <div class="widget">
+            <h3 class="widget-title">Bookings by Goal</h3>
+            <div id="intentChart" class="intent-chart">
+              <div class="skeleton widget-skeleton"></div>
+            </div>
+          </div>
+
+          <!-- Upcoming booked slots -->
+          <div class="widget">
+            <h3 class="widget-title">Upcoming Booked Slots (next 7 days)</h3>
+            <div id="upcomingSlots" class="upcoming-list">
+              <div class="skeleton widget-skeleton"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent bookings mini-table -->
+        <div class="widget mt-16">
+          <h3 class="widget-title">Recent Bookings</h3>
+          <div id="recentBookings" class="table-wrap">
+            <div class="skeleton widget-skeleton"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ SECTION: Bookings ══ -->
+      <section class="section" id="section-bookings">
+        <div class="section-header">
+          <h2>All Bookings</h2>
+          <span class="badge-count" id="bookingsCount">—</span>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+          <input
+            type="search"
+            id="searchInput"
+            placeholder="Search name, email or phone…"
+            class="search-input"
+          />
+          <select id="intentFilter" class="filter-select">
+            <option value="">All goals</option>
+            <option value="safe_start">Start Investing Safely</option>
+            <option value="education">Crypto Education</option>
+            <option value="strategy">Better Strategy</option>
+          </select>
+          <select id="statusFilter" class="filter-select">
+            <option value="">All statuses</option>
+            <option value="booking confirmed">Confirmed</option>
+          </select>
+        </div>
+
+        <div id="bookingsTableWrap" class="table-wrap">
+          <div class="skeleton widget-skeleton"></div>
+        </div>
+      </section>
+
+      <!-- ══ SECTION: File Assets ══ -->
+      <section class="section" id="section-assets">
+        <div class="section-header">
+          <h2>File Assets</h2>
+        </div>
+
+        <div class="coming-soon-card">
+          <div class="coming-soon-icon">📁</div>
+          <h3>File Asset Management</h3>
+          <p>
+            Upload documents, guides, and resources that clients can download directly
+            from your website. This feature is currently in development.
+          </p>
+          <div class="coming-soon-features">
+            <div class="feature-item">✅ Upload PDF / images / zip files</div>
+            <div class="feature-item">✅ Set public or invite-only access</div>
+            <div class="feature-item">✅ Get shareable download links</div>
+            <div class="feature-item">✅ Manage and delete uploads</div>
+          </div>
+          <div class="coming-soon-badge">Coming Soon</div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

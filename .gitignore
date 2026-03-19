@@ -10,8 +10,17 @@
 env.js
 config.production.js
 config.*.js
+code.gs
+dev-server.js
+# Allow the public production config — it contains NO secrets (only public URLs/contacts)
+!public/config.production.js
 !public/config.example.js
 
+# Dev-only diagnostic scripts — not needed in repo history
+diagnose-calendar.js
+setup-vercel-env.ps1
+# Email preview — dev tool only, would be publicly accessible in production
+public/form/seminar-email-preview.html
 # ============================================
 # NODE & DEPENDENCIES
 # ============================================
@@ -111,3 +120,5 @@ setup-vercel-env.ps1
 secrets/
 private/
 .secrets/
+.vercel
+

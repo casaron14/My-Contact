@@ -5,6 +5,7 @@
   "main": "api/submit.js",
   "scripts": {
     "dev": "vercel dev",
+    "dev:local": "node dev-server.js",
     "deploy": "vercel --prod"
   },
   "keywords": [
@@ -17,6 +18,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
     "googleapis": "^128.0.0"
   },
   "engines": {

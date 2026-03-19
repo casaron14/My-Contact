@@ -1,319 +1,214 @@
-import { google } from 'googleapis';
-import { Buffer } from 'buffer';
+/**
+ * Booking Slot Management API
+ *
+ * Thin orchestration layer — all slot persistence is handled by SlotProvider.
+ * Switch between "database" and "calendar" backends via SLOT_PROVIDER env var.
+ *
+ * Environment Variables:
+ *   SLOT_PROVIDER                - 'database' (default) | 'calendar'
+ *   SUPABASE_URL                 - required when SLOT_PROVIDER=database
+ *   SUPABASE_SERVICE_ROLE_KEY    - required when SLOT_PROVIDER=database
+ *   GOOGLE_SERVICE_ACCOUNT_EMAIL - required when SLOT_PROVIDER=calendar
+ *   GOOGLE_PRIVATE_KEY           - required when SLOT_PROVIDER=calendar
+ */
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+'use strict';
+
+const config = require('../config');
+const { logger } = require('../lib/middleware');
+const { ApiError } = require('../lib/security');
+const { getSlotProvider } = require('../lib/providers/SlotProvider');
+
+/**
+ * Returns the UTC offset in milliseconds for a given timezone at a specific moment.
+ * Positive = east of UTC  (e.g. Africa/Nairobi UTC+3 → +10_800_000 ms)
+ *
+ * This avoids hardcoding the numeric offset and handles hypothetical DST changes.
+ */
+function getTzOffsetMs(timezone, date) {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  });
+  const p = fmt.formatToParts(date).reduce((a, { type, value }) => ((a[type] = value), a), {});
+  let h = parseInt(p.hour, 10);
+  if (h === 24) h = 0; // midnight edge case
+  const localAsUtcMs = Date.UTC(+p.year, +p.month - 1, +p.day, h, +p.minute, +p.second);
+  return localAsUtcMs - date.getTime();
+}
+
+/**
+ * Generate time slots based on booking configuration.
+ * Rules:
+ *   - Monday – Friday only (weekends excluded)
+ *   - Each slot is slotDurationMin (25 min) long
+ *   - slotBreakMin (5 min) separates consecutive slots  → stride = 30 min
+ *   - Window: slotStartHour (16:00) – slotEndHour (18:00) in BOOKING_TIMEZONE
+ *   - Slots: 16:00, 16:30, 17:00, 17:30 EAT (4 per weekday)
+ *
+ * All times are generated in the configured booking timezone (Africa/Nairobi)
+ * and stored as UTC, so they display correctly in any browser timezone.
+ *
+ * @param {number} daysAhead - Number of calendar days to look ahead
+ * @returns {Date[]}
+ */
+function generateTimeSlots(daysAhead) {
+  const slots = [];
+  const timezone = config?.app?.timezone || 'Africa/Nairobi';
+
+  const slotStartHour   = config?.booking?.slotStartHour   || 16;
+  const slotEndHour     = config?.booking?.slotEndHour     || 18;
+  const slotDurationMin = config?.booking?.slotDurationMin || 25;
+  const slotBreakMin    = config?.booking?.slotBreakMin    || 5;
+  const stride          = slotDurationMin + slotBreakMin; // 30 min between slot starts
+
+  const startMinutes = slotStartHour * 60;
+  const endMinutes   = slotEndHour   * 60;
+  const now          = new Date();
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+  for (let dayOffset = 0; dayOffset <= daysAhead; dayOffset++) {
+    // Derive the calendar date for this offset in the booking timezone.
+    // Adding integer 24-hour periods to 'now' and then using toLocaleDateString
+    // works correctly for Africa/Nairobi which has no DST.
+    const probeDate = new Date(now.getTime() + dayOffset * 24 * 60 * 60 * 1000);
+    const dateStr   = probeDate.toLocaleDateString('en-CA', { timeZone: timezone }); // YYYY-MM-DD
+
+    // Skip weekends in the booking timezone
+    const weekday = probeDate.toLocaleDateString('en-US', { timeZone: timezone, weekday: 'short' });
+    if (weekday === 'Sat' || weekday === 'Sun') continue;
+
+    // Flat-minute loop: stop before a slot would run past slotEndHour
+    for (let min = startMinutes; min + slotDurationMin <= endMinutes; min += stride) {
+      const h = Math.floor(min / 60);
+      const m = min % 60;
+
+      // Build the correct UTC instant for h:m in the booking timezone.
+      //
+      // Step 1: Construct a "proxy UTC" Date by treating the local clock time
+      //         as if it were UTC (e.g. 16:00 local → 16:00Z).
+      const hStr  = String(h).padStart(2, '0');
+      const mStr  = String(m).padStart(2, '0');
+      const proxyUtc = new Date(`${dateStr}T${hStr}:${mStr}:00Z`);
+
+      // Step 2: Find the timezone's actual UTC offset at that proxy moment.
+      //         Then subtract it to get the real UTC instant.
+      //         Example for Africa/Nairobi (UTC+3):
+      //           proxyUtc = 16:00Z, offset = +3h  →  slotTime = 13:00Z (= 16:00 EAT) ✓
+      const offsetMs = getTzOffsetMs(timezone, proxyUtc);
+      const slotTime = new Date(proxyUtc.getTime() - offsetMs);
+
+      // Only offer slots that are at least 2 hours away (same-day booking allowed)
+      if (slotTime.getTime() - now.getTime() >= TWO_HOURS_MS) {
+        slots.push(slotTime);
+      }
+    }
   }
+
+  return slots;
+}
+
+/**
+ * Check whether a specific time slot is still available.
+ * Delegates to the configured SlotProvider (database or calendar).
+ *
+ * @param {string} slotDateTime - ISO datetime string
+ * @returns {Promise<boolean>}
+ */
+async function checkSlotAvailability(slotDateTime) {
+  return getSlotProvider().checkSlotAvailability(slotDateTime);
+}
+
+/**
+ * Reserve a booked slot in the backing store (database or calendar).
+ * Non-blocking: errors are caught and logged so the booking still succeeds.
+ *
+ * @param {Object} bookingData
+ * @param {string} bookingData.slotDateTime - ISO datetime of the chosen slot
+ * @param {string} bookingId - Application-level booking reference ID
+ * @returns {Promise<{slotId: string|null, eventLink: string|null, isDevelopment: boolean}>}
+ */
+async function recordBookedSlot(bookingData, bookingId) {
+  try {
+    logger.info('📅 Recording booked slot', { provider: config.slotProvider, bookingId });
+    const result = await getSlotProvider().bookSlot(
+      bookingData.slotDateTime,
+      bookingId,
+      bookingData
+    );
+
+    if (!result.isDevelopment) {
+      logger.info('✅ Slot reserved', { slotId: result.id, bookingId });
+    }
+
+    return {
+      slotId: result.id || null,
+      eventLink: result.eventLink || null,
+      isDevelopment: result.isDevelopment || false,
+    };
+  } catch (error) {
+    // Re-throw conflict errors (409) so the API layer can return the right status
+    if (error.statusCode === 409) throw error;
+
+    // All other slot-store failures are non-blocking — the booking in Sheets is the source of truth
+    logger.warn('⚠️  Slot reservation failed (non-blocking)', {
+      error: error.message,
+      bookingId,
+    });
+    return { slotId: null, eventLink: null, isDevelopment: false, error: error.message };
+  }
+}
+
+/**
+ * Return available time slots by querying the configured SlotProvider.
+ *
+ * @param {Object} options
+ * @param {number} [options.daysAhead]
+ * @returns {Promise<Array<{dateTime: string, available: boolean, isDevelopment: boolean}>>}
+ */
+async function getAvailableSlots(options = {}) {
+  const daysAhead = options.daysAhead || config.booking.daysAvailable || 3;
 
   try {
-    const { fullName, email, phone, intent, slotDateTime } = req.body;
+    logger.info('📅 Fetching available slots', { provider: config.slotProvider, daysAhead });
 
-    // Validate required fields
-    if (!fullName || !email || !slotDateTime) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    const potentialSlots = generateTimeSlots(daysAhead);
+    if (potentialSlots.length === 0) {
+      logger.warn('⚠️ No potential booking slots generated. Check booking config.');
+      return [];
     }
 
-    // Check if we're in development mode (mock API)
-    const isDevelopment = process.env.NODE_ENV !== 'production' && 
-                         (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || 
-                          !process.env.GOOGLE_PRIVATE_KEY);
+    const timeMin = potentialSlots[0].toISOString();
+    const timeMax = new Date(
+      potentialSlots[potentialSlots.length - 1].getTime() +
+      config.booking.slotDurationMin * 60 * 1000
+    ).toISOString();
 
-    if (isDevelopment) {
-      // Return mock response for local testing
-      return res.status(200).json({
-        success: true,
-        message: 'Booking confirmed! (Development Mode)',
-        eventId: 'dev-' + Date.now(),
-        eventLink: '#',
-        isDevelopment: true
-      });
-    }
+    const busyDatetimes = await getSlotProvider().getBusySlotDatetimes(timeMin, timeMax);
+    const busySet = new Set(busyDatetimes.map(d => new Date(d).toISOString()));
 
-    // Parse credentials from environment
-    const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+    const result = potentialSlots.map(slot => ({
+      dateTime: slot.toISOString(),
+      available: !busySet.has(slot.toISOString()),
+      isDevelopment: false,
+    }));
 
-    if (!serviceAccountEmail || !privateKey) {
-      console.error('Missing Google credentials');
-      return res.status(500).json({ error: 'Google credentials not configured' });
-    }
+    const availableCount = result.filter(s => s.available).length;
+    logger.info(`✅ Found ${availableCount}/${potentialSlots.length} available slots.`);
 
-    // Authenticate with Google
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        type: 'service_account',
-        project_id: 'heroic-bliss-274216',
-        private_key_id: 'a3f7e9b2c1d4f8e9a3b2c1d4f8e9a3b2',
-        private_key: privateKey,
-        client_email: serviceAccountEmail,
-        client_id: '123456789',
-        auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-        token_uri: 'https://oauth2.googleapis.com/token',
-        auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs'
-      },
-      scopes: [
-        'https://www.googleapis.com/auth/calendar',
-        'https://www.googleapis.com/auth/gmail.send'
-      ]
-    });
-
-    const calendar = google.calendar({ version: 'v3', auth });
-    const gmail = google.gmail({ version: 'v1', auth });
-
-    // Parse slot date/time
-    const startTime = new Date(slotDateTime);
-    const endTime = new Date(startTime.getTime() + 30 * 60000); // 30 minutes
-
-    // ==================== CREATE CALENDAR EVENT ====================
-    const eventBody = {
-      summary: `Strategy Session - ${fullName}`,
-      description: `Client Booking Details:
-Name: ${fullName}
-Email: ${email}
-Phone: ${phone || 'Not provided'}
-Primary Goal: ${intent || 'Not specified'}
-
-This is a 30-minute cryptocurrency investment strategy consultation.`,
-      start: {
-        dateTime: startTime.toISOString(),
-        timeZone: 'UTC'
-      },
-      end: {
-        dateTime: endTime.toISOString(),
-        timeZone: 'UTC'
-      },
-      attendees: [
-        {
-          email: email,
-          displayName: fullName
-        }
-      ],
-      reminders: {
-        useDefault: true
-      }
-    };
-
-    const event = await calendar.events.insert({
-      calendarId: 'primary',
-      resource: eventBody,
-      sendUpdates: 'all'
-    });
-
-    // ==================== GENERATE ICS FILE ====================
-    const icsContent = generateICS({
-      fullName,
-      email,
-      startTime,
-      endTime,
-      phone,
-      intent
-    });
-
-    // ==================== SEND EMAIL WITH CALENDAR INVITE ====================
-    const emailBody = generateEmailBody(fullName, startTime, email);
-    
-    const message = {
-      raw: Buffer.from(
-        `From: Charity Aron <${serviceAccountEmail}>\r\n` +
-        `To: ${email}\r\n` +
-        `Subject: Booking Confirmation - Your Strategy Session\r\n` +
-        `MIME-Version: 1.0\r\n` +
-        `Content-Type: multipart/mixed; boundary="boundary123"\r\n` +
-        `\r\n` +
-        `--boundary123\r\n` +
-        `Content-Type: text/html; charset="UTF-8"\r\n` +
-        `Content-Transfer-Encoding: 7bit\r\n` +
-        `\r\n` +
-        emailBody +
-        `\r\n--boundary123\r\n` +
-        `Content-Type: text/calendar; charset="UTF-8"; method=REQUEST\r\n` +
-        `Content-Transfer-Encoding: base64\r\n` +
-        `Content-Disposition: attachment; filename="booking.ics"\r\n` +
-        `\r\n` +
-        Buffer.from(icsContent).toString('base64') +
-        `\r\n--boundary123--`
-      ).toString('base64')
-    };
-
-    await gmail.users.messages.send({
-      userId: 'me',
-      resource: message
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: 'Booking confirmed! Confirmation email sent.',
-      eventId: event.data.id,
-      eventLink: event.data.htmlLink,
-      bookedTime: startTime.toISOString(),
-      clientEmail: email
-    });
+    return result;
 
   } catch (error) {
-    console.error('Booking error:', error.message);
-    return res.status(500).json({
-      error: 'Failed to create booking',
-      details: error.message
-    });
+    logger.error('❌ Fatal error in getAvailableSlots', { error: error.message });
+    throw new ApiError(`Failed to get available slots: ${error.message}`, 500);
   }
 }
 
-// ==================== HELPER: GENERATE ICS FILE ====================
-function generateICS({ fullName, email, startTime, endTime, phone, intent }) {
-  const startICS = formatICSDate(startTime);
-  const endICS = formatICSDate(endTime);
-  const createdAt = formatICSDate(new Date());
-  const uid = `booking-${Date.now()}@charity-aron.com`;
-
-  return `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Charity Aron//Booking System//EN
-METHOD:REQUEST
-BEGIN:VEVENT
-UID:${uid}
-DTSTAMP:${createdAt}
-DTSTART:${startICS}
-DTEND:${endICS}
-SUMMARY:Strategy Session with Charity Aron
-DESCRIPTION:Your cryptocurrency investment strategy consultation session. Goal: ${intent || 'Not specified'}
-LOCATION:Online Meeting
-ORGANIZER:MAILTO:charity@charityaron.com
-ATTENDEE:mailto:${email}
-STATUS:CONFIRMED
-SEQUENCE:0
-END:VEVENT
-END:VCALENDAR`;
-}
-
-// ==================== HELPER: FORMAT ICS DATE ====================
-function formatICSDate(date) {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  const hours = String(date.getUTCHours()).padStart(2, '0');
-  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-  const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-  
-  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
-}
-
-// ==================== HELPER: GENERATE HTML EMAIL ====================
-function generateEmailBody(fullName, startTime, clientEmail) {
-  const dateStr = startTime.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  });
-  
-  const timeStr = startTime.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
-
-  const googleCalendarUrl = encodeGoogleCalendarLink(startTime, fullName);
-
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; background: #f8f9fc; }
-    .card { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .header { text-align: center; margin-bottom: 25px; border-bottom: 3px solid #1a365d; padding-bottom: 15px; }
-    h1 { color: #1a365d; margin: 0 0 5px 0; font-size: 28px; }
-    .subtitle { color: #4a5568; font-size: 14px; }
-    .booking-details { background: #f7fafc; border-left: 4px solid #1d5d99; padding: 15px; margin: 20px 0; border-radius: 4px; }
-    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
-    .detail-row:last-child { border-bottom: none; }
-    .label { font-weight: 600; color: #4a5568; }
-    .value { color: #1a202c; }
-    .cta-section { text-align: center; margin: 30px 0; }
-    .btn { display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; transition: transform 0.2s; }
-    .btn:hover { transform: translateY(-2px); }
-    .footer { text-align: center; margin-top: 25px; padding-top: 15px; border-top: 1px solid #e2e8f0; color: #4a5568; font-size: 12px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="card">
-      <div class="header">
-        <h1>✓ Booking Confirmed!</h1>
-        <p class="subtitle">Your strategy session is scheduled</p>
-      </div>
-
-      <p>Hi ${fullName},</p>
-      
-      <p>Your cryptocurrency investment strategy consultation has been successfully booked! We're excited to discuss your financial goals with you.</p>
-
-      <div class="booking-details">
-        <div class="detail-row">
-          <span class="label">📅 Date & Time:</span>
-          <span class="value">${dateStr} at ${timeStr}</span>
-        </div>
-        <div class="detail-row">
-          <span class="label">⏱️ Duration:</span>
-          <span class="value">30 minutes</span>
-        </div>
-        <div class="detail-row">
-          <span class="label">📍 Format:</span>
-          <span class="value">Online Meeting</span>
-        </div>
-        <div class="detail-row">
-          <span class="label">📧 Confirmation:</span>
-          <span class="value">${clientEmail}</span>
-        </div>
-      </div>
-
-      <div class="cta-section">
-        <p><strong>Add to Your Calendar:</strong></p>
-        <a href="${googleCalendarUrl}" class="btn">+ Add to Google Calendar</a>
-        <p style="font-size: 13px; color: #718096; margin-top: 12px;">
-          Or open the calendar invite attached to this email in your email client
-        </p>
-      </div>
-
-      <p><strong>What to expect:</strong></p>
-      <ul style="color: #4a5568;">
-        <li>Personalized analysis of your investment goals</li>
-        <li>Clear strategy tailored to your experience level</li>
-        <li>Actionable next steps for your crypto journey</li>
-        <li>Professional guidance to help you invest responsibly</li>
-      </ul>
-
-      <p style="color: #4a5568;">If you need to reschedule or have any questions, feel free to reach out!</p>
-
-      <div class="footer">
-        <p>&copy; 2026 Charity Aron. Professional cryptocurrency consultation services.</p>
-        <p>Cryptocurrency investments carry risk. Please invest responsibly.</p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
-  `;
-}
-
-// ==================== HELPER: GENERATE GOOGLE CALENDAR LINK ====================
-function encodeGoogleCalendarLink(startTime, fullName) {
-  const text = `Strategy Session with Charity Aron`;
-  const details = `Cryptocurrency investment consultation with ${fullName}`;
-  
-  const startISO = startTime.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  const endTime = new Date(startTime.getTime() + 30 * 60000);
-  const endISO = endTime.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-
-  const calendarUrl = new URL('https://calendar.google.com/calendar/render');
-  calendarUrl.searchParams.set('action', 'TEMPLATE');
-  calendarUrl.searchParams.set('text', text);
-  calendarUrl.searchParams.set('details', details);
-  calendarUrl.searchParams.set('dates', `${startISO}/${endISO}`);
-  calendarUrl.searchParams.set('location', 'Online');
-  calendarUrl.searchParams.set('trp', 'true');
-
-  return calendarUrl.toString();
-}
+module.exports = {
+  checkSlotAvailability,
+  recordBookedSlot,
+  getAvailableSlots,
+  generateTimeSlots,
+};

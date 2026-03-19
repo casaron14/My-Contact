@@ -562,6 +562,40 @@ body {
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
+/* Booked slot — visually distinct: muted red tint, not clickable */
+.slot-button.slot-booked {
+    background: #fef2f2;
+    color: #9ca3af;
+    border-color: #fca5a5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none;
+    opacity: 0.75;
+}
+
+.slot-button.slot-booked:hover {
+    background: #fef2f2;
+    color: #9ca3af;
+    border-color: #fca5a5;
+    transform: none;
+    box-shadow: none;
+}
+
+.slot-time {
+    display: block;
+    font-weight: 600;
+}
+
+.slot-status-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+    color: #ef4444;
+}
+
 /* ==================== CONFIRMATION SECTION ==================== */
 .confirmation-section {
     background: var(--background-white);
@@ -738,6 +772,19 @@ body {
     padding-top: 1.5rem;
     border-top: 1px solid var(--border-color);
     line-height: 1.5;
+}
+
+.calendar-notice {
+    background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+    border-left: 4px solid #0284c7;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+    border-radius: 8px;
+    color: #0c4a6e;
+    font-size: 0.95rem;
+    text-align: center;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.1);
 }
 
 /* Touch device optimizations */
