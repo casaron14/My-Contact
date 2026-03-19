@@ -2,6 +2,7 @@
   "version": 2,
   "routes": [
     { "src": "/book",               "dest": "/form/book.html" },
+    { "src": "/seminar",            "dest": "/form/seminar.html" },
     { "src": "/api/get-slots",      "dest": "/api/get-slots.js" },
     { "src": "/api/book-slot",      "dest": "/api/book-slot.js" },
     { "src": "/api/submit",         "dest": "/api/submit.js" },
