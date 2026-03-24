@@ -12,6 +12,6 @@ const CONFIG = {
         twitter: 'https://twitter.com/charityaron'
     },
     api: {
-        baseUrl: 'https://charityaron.vercel.app'
+        baseUrl: 'https://charityaron.dienacademy.com'
     }
 };

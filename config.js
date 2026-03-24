@@ -160,7 +160,7 @@ const config = {
   security: {
     enableSecurityHeaders: !isDevelopment,
     enableCsrfProtection: !isDevelopment,
-    corsOrigin: 'https://charityaron.vercel.app', // Change for your domain
+    corsOrigin: 'https://charityaron.dienacademy.com', // Change for your domain
   },
 };
 
